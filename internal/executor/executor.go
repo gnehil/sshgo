@@ -63,15 +63,20 @@ func ExecSSH(p config.Profile, extraArgs ...string) error {
 
 func ExecWithPassword(password string, p config.Profile, extraArgs ...string) error {
 	addr := fmt.Sprintf("%s:%d", p.Host, p.Port)
+
 	sshConf := &ssh.ClientConfig{
 		User: p.User,
 		Auth: []ssh.AuthMethod{
 			ssh.Password(password),
+			ssh.KeyboardInteractive(func(user, instruction string, questions []string, echos []bool) (answers []string, err error) {
+				answers = make([]string, len(questions))
+				for i := range questions {
+					answers[i] = password
+				}
+				return answers, nil
+			}),
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-	}
-	if p.KeepaliveInterval > 0 {
-		sshConf.SetDefaults()
 	}
 
 	client, err := ssh.Dial("tcp", addr, sshConf)
