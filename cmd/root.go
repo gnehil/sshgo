@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"os"
+	"strings"
+
 	"github.com/spf13/cobra"
 	"github.com/sshgo/sshgo/internal/config"
 )
@@ -8,9 +11,9 @@ import (
 const version = "0.1.0"
 
 var rootCmd = &cobra.Command{
-	Use:   "sshgo",
-	Short: "SSH session manager CLI",
-	Long:  "sshgo is a CLI tool for managing SSH sessions with support for groups, jump hosts, port forwarding, and batch execution.",
+	Use:     "sshgo",
+	Short:   "SSH session manager CLI",
+	Long:    "sshgo is a CLI tool for managing SSH sessions with support for groups, jump hosts, port forwarding, and batch execution.",
 	Version: version,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) > 0 {
@@ -28,10 +31,16 @@ func loadConfig() (*config.Config, error) {
 	return config.LoadConfig(cfgPath)
 }
 
-func Execute() error {
-	return rootCmd.Execute()
-}
-
 func init() {
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
+	rootCmd.SilenceErrors = true
+	rootCmd.SilenceUsage = true
+}
+
+func Execute() error {
+	err := rootCmd.Execute()
+	if err != nil && strings.Contains(err.Error(), "unknown command") && len(os.Args) > 1 {
+		return runConnect(os.Args[1])
+	}
+	return err
 }
