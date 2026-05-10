@@ -79,7 +79,14 @@ func ExecWithPassword(password string, p config.Profile, extraArgs ...string) er
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
-	client, err := ssh.Dial("tcp", addr, sshConf)
+	var client *ssh.Client
+	var err error
+
+	if len(p.JumpHosts) > 0 {
+		client, err = connectViaJump(password, p, addr, sshConf)
+	} else {
+		client, err = ssh.Dial("tcp", addr, sshConf)
+	}
 	if err != nil {
 		return fmt.Errorf("connection failed: %w", err)
 	}
@@ -129,4 +136,72 @@ func ExecWithPassword(password string, p config.Profile, extraArgs ...string) er
 
 	session.Wait()
 	return nil
+}
+
+func connectViaJump(password string, p config.Profile, addr string, sshConf *ssh.ClientConfig) (*ssh.Client, error) {
+	var last *ssh.Client
+	for _, j := range p.JumpHosts {
+		jAddr := fmt.Sprintf("%s:%d", j.Host, j.Port)
+		jConf := &ssh.ClientConfig{
+			User: j.User,
+			Auth: []ssh.AuthMethod{
+				ssh.Password(password),
+				ssh.KeyboardInteractive(func(user, instruction string, questions []string, echos []bool) (answers []string, err error) {
+					answers = make([]string, len(questions))
+					for i := range questions {
+						answers[i] = password
+					}
+					return answers, nil
+				}),
+			},
+			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		}
+
+		if j.IdentityFile != "" {
+			key, err := loadKey(config.ExpandTilde(j.IdentityFile))
+			if err == nil && key != nil {
+				jConf.Auth = append(jConf.Auth, key)
+			}
+		}
+
+		conn, err := dialWithBastion(last, "tcp", jAddr, jConf)
+		if err != nil {
+			return nil, fmt.Errorf("jump host %s (%s@%s:%d): %w", j.Name, j.User, j.Host, j.Port, err)
+		}
+		last = conn
+	}
+
+	if last == nil {
+		return ssh.Dial("tcp", addr, sshConf)
+	}
+
+	conn, err := dialWithBastion(last, "tcp", addr, sshConf)
+	if err != nil {
+		return nil, err
+	}
+	return conn, nil
+}
+
+func dialWithBastion(bastion *ssh.Client, network, addr string, config *ssh.ClientConfig) (*ssh.Client, error) {
+	conn, err := bastion.Dial(network, addr)
+	if err != nil {
+		return nil, err
+	}
+	c, chans, reqs, err := ssh.NewClientConn(conn, addr, config)
+	if err != nil {
+		return nil, err
+	}
+	return ssh.NewClient(c, chans, reqs), nil
+}
+
+func loadKey(path string) (ssh.AuthMethod, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	key, err := ssh.ParsePrivateKey(data)
+	if err != nil {
+		return nil, err
+	}
+	return ssh.PublicKeys(key), nil
 }
