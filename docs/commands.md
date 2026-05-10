@@ -1,18 +1,18 @@
-# 命令参考
+# Command Reference
 
-## 连接管理
+## Connection Management
 
 ### `sshgo add <name>`
 
-添加新的 SSH 连接配置。
+Add a new SSH connection profile.
 
-| 参数 | 说明 | 必填 |
-|------|------|------|
-| `<name>` | 连接别名（小写字母、数字、连字符，不能以连字符开头） | 是 |
-| `--host` | 服务器 IP 或域名 | 是 |
-| `--port`, `-p` | SSH 端口（默认 22） | 否 |
-| `--user`, `-u` | SSH 用户名 | 是 |
-| `--group` | 所属分组名称 | 否 |
+| Flag | Description | Required |
+|------|-------------|----------|
+| `<name>` | Connection alias (lowercase letters, numbers, hyphens; cannot start with hyphen) | Yes |
+| `--host` | Server IP or hostname | Yes |
+| `--port`, `-p` | SSH port (default: 22) | No |
+| `--user`, `-u` | SSH username | Yes |
+| `--group` | Group name | No |
 
 ```bash
 sshgo add my-server --host 192.168.1.10 --user deploy -p 2222 --group prod
@@ -20,7 +20,7 @@ sshgo add my-server --host 192.168.1.10 --user deploy -p 2222 --group prod
 
 ### `sshgo show <name>`
 
-显示连接配置的详细信息（含跳板机、端口转发等）。
+Show detailed connection profile information (including jump hosts, port forwarding, etc.).
 
 ```bash
 sshgo show my-server
@@ -28,19 +28,19 @@ sshgo show my-server
 
 ### `sshgo edit <name>`
 
-打开 `~/.sshgo/config.yaml` 进行手动编辑。
+Open `~/.sshgo/config.yaml` for manual editing.
 
 ```bash
-# 编辑指定连接（打开完整配置文件，光标不一定在对应行）
+# Edit specific connection (opens full config file)
 sshgo edit my-server
 
-# 编辑完整配置文件
+# Edit the full configuration file
 sshgo edit
 ```
 
 ### `sshgo delete <name>`
 
-删除指定的连接配置（同义词：`rm`、`del`）。
+Delete the specified connection profile (aliases: `rm`, `del`).
 
 ```bash
 sshgo delete my-server
@@ -49,60 +49,60 @@ sshgo rm my-server
 
 ---
 
-## 查询
+## Listing
 
 ### `sshgo list`
 
-列出所有连接配置。
+List all connection profiles.
 
-| 参数 | 说明 |
-|------|------|
-| `--group` | 按分组过滤 |
-| `--sort` | 排序方式：`name` |
-| `--format`, `-f` | 输出格式：`table`（默认）、`json` |
+| Flag | Description |
+|------|-------------|
+| `--group` | Filter by group |
+| `--sort` | Sort order: `name` |
+| `--format`, `-f` | Output format: `table` (default), `json` |
 
 ```bash
-sshgo list                  # 列出所有
-sshgo list --group prod     # 只显示 prod 分组
-sshgo list --sort name      # 按名称排序
-sshgo list --format json    # JSON 输出
-sshgo ls                    # 别名
+sshgo list                  # List all
+sshgo list --group prod     # Show only prod group
+sshgo list --sort name      # Sort by name
+sshgo list --format json    # JSON output
+sshgo ls                    # Alias
 ```
 
 ---
 
-## 连接
+## Connecting
 
 ### `sshgo connect <name>`
 
-连接到已保存的 SSH 会话。实际执行 `exec ssh` 替换当前进程。
+Connect to a saved SSH session. Actually executes `ssh` and replaces the current process.
 
-| 参数 | 说明 |
-|------|------|
-| `<name>` | 连接别名 |
-| `--recent` | 从连接历史中选择 |
+| Flag | Description |
+|------|-------------|
+| `<name>` | Connection alias |
+| `--recent` | Choose from connection history |
 
 ```bash
 sshgo connect my-server
-sshgo my-server           # 快速模式（等价）
-sshgo connect --recent    # 从历史选择
+sshgo my-server           # Quick mode (equivalent)
+sshgo connect --recent    # Choose from history
 ```
 
 ---
 
-## 分组管理
+## Groups
 
 ### `sshgo group list`
 
-列出所有分组及其包含的连接数。
+List all groups with the number of connections in each.
 
 ### `sshgo group add <name>`
 
-添加新分组。
+Add a new group.
 
-| 参数 | 说明 |
-|------|------|
-| `--description` | 分组描述 |
+| Flag | Description |
+|------|-------------|
+| `--description` | Group description |
 
 ```bash
 sshgo group add prod --description "Production servers"
@@ -110,7 +110,7 @@ sshgo group add prod --description "Production servers"
 
 ### `sshgo group delete <name>`
 
-删除分组（不影响该分组下的连接配置）。
+Delete a group (does not affect connections in that group).
 
 ```bash
 sshgo group delete prod
@@ -118,54 +118,54 @@ sshgo group delete prod
 
 ---
 
-## 跳板机
+## Jump Hosts
 
 ### `sshgo add-jump <name>`
 
-为指定连接添加跳板机（支持多层跳板链）。
+Add jump host(s) to a connection (supports multi-hop chains).
 
-| 参数 | 说明 |
-|------|------|
-| `<name>` | 目标连接别名 |
-| `--jump` | 跳板机地址（可重复使用） |
+| Flag | Description |
+|------|-------------|
+| `<name>` | Target connection alias |
+| `--jump` | Jump host address (can be used multiple times) |
 
-跳板机地址格式：`[user@]host[:port]`，user 默认为 root。
+Jump host address format: `[user@]host[:port]`, user defaults to root.
 
 ```bash
-# 单层跳板
+# Single hop
 sshgo add-jump db-server --jump bastion
 
-# 多层跳板链
+# Multi-hop chain
 sshgo add-jump db-server --jump bastion --jump gateway
 
-# 带用户和端口
+# With user and port
 sshgo add-jump db-server --jump deploy@bastion:2222
 ```
 
 ---
 
-## 端口转发
+## Port Forwarding
 
 ### `sshgo forward add <name>`
 
-为指定连接添加端口转发规则。
+Add port forwarding rule to a connection.
 
-| 参数 | 说明 |
-|------|------|
-| `<name>` | 连接别名 |
-| `--local`, `-L` | 本地端口转发（格式：`local_port:remote_host:remote_port` 或 `local:remote`） |
+| Flag | Description |
+|------|-------------|
+| `<name>` | Connection alias |
+| `--local`, `-L` | Local port forward (format: `local_port:remote_host:remote_port` or `local:remote`) |
 
 ```bash
-# 简写（remote_host 默认为 localhost）
+# Short form (remote_host defaults to localhost)
 sshgo forward add my-server -L 8080:80
 
-# 完整格式
+# Full form
 sshgo forward add my-server -L 8080:db-host:5432
 ```
 
 ### `sshgo forward list`
 
-列出所有端口转发规则。
+List all port forwarding rules.
 
 ```bash
 sshgo forward list
@@ -173,30 +173,30 @@ sshgo forward list
 
 ---
 
-## 批量执行
+## Batch Execution
 
 ### `sshgo exec <pattern> <command>`
 
-对多台服务器并行执行命令。
+Execute commands on multiple servers in parallel.
 
-| 参数 | 说明 |
-|------|------|
-| `<pattern>` | 匹配模式：通配符、逗号分隔列表 |
-| `<command>` | 要执行的命令 |
-| `--group` | 对指定分组内所有服务器执行 |
+| Flag | Description |
+|------|-------------|
+| `<pattern>` | Match pattern: wildcard, comma-separated list |
+| `<command>` | Command to execute |
+| `--group` | Execute on all servers in specified group |
 
 ```bash
-# 通配符匹配
+# Wildcard matching
 sshgo exec 'web-*' "uptime"
 
-# 逗号分隔的多台
+# Comma-separated list
 sshgo exec "web-1,web-2,db-1" "df -h"
 
-# 按分组执行
+# Execute by group
 sshgo exec --group prod "systemctl status nginx"
 ```
 
-输出格式：
+Output format:
 
 ```
 === web-1 ===
@@ -208,20 +208,20 @@ sshgo exec --group prod "systemctl status nginx"
 Total: 2 succeeded, 0 failed
 ```
 
-**注意**：批量执行使用 SSH 默认认证（密钥、Agent）。需要密码认证的服务器可能无法交互输入密码。
+**Note**: Batch execution uses SSH default authentication (key, Agent). Servers requiring password authentication may not work interactively.
 
 ---
 
-## 导入/同步
+## Import/Sync
 
 ### `sshgo import`
 
-从 OpenSSH 配置文件导入连接。
+Import connections from OpenSSH config file.
 
-| 参数 | 说明 |
-|------|------|
-| `--file`, `-f` | 源文件路径（默认 `~/.ssh/config`） |
-| `--overwrite`, `-w` | 覆盖已有同名配置 |
+| Flag | Description |
+|------|-------------|
+| `--file`, `-f` | Source file path (default: `~/.ssh/config`) |
+| `--overwrite`, `-w` | Overwrite existing profiles with same name |
 
 ```bash
 sshgo import
@@ -229,45 +229,45 @@ sshgo import --file /path/to/custom-ssh-config
 sshgo import --overwrite
 ```
 
-支持解析：Host, HostName, User, Port, IdentityFile, ProxyJump, Include 指令。
+Supported directives: Host, HostName, User, Port, IdentityFile, ProxyJump, Include.
 
 ### `sshgo sync`
 
-将 sshgo 配置导出为 OpenSSH 兼容格式，写入 `~/.ssh/config`。
+Export sshgo configuration to OpenSSH compatible format, writing to `~/.ssh/config`.
 
-| 参数 | 说明 |
-|------|------|
-| `--dry-run` | 预览输出，不写入文件 |
+| Flag | Description |
+|------|-------------|
+| `--dry-run` | Preview output without writing |
 
 ```bash
-sshgo sync --dry-run    # 预览
-sshgo sync              # 写入 ~/.ssh/config
+sshgo sync --dry-run    # Preview
+sshgo sync              # Write to ~/.ssh/config
 ```
 
-**行为说明**：
-- 自动备份原 `~/.ssh/config` 为 `~/.ssh/config.sshgo.bak`
-- 保留 `~/.ssh/config` 中非 sshgo 生成的内容
-- 替换 sshgo 生成的区块（标记为 `# Generated by sshgo`）
+**Behavior**:
+- Automatically backs up original `~/.ssh/config` to `~/.ssh/config.sshgo.bak`
+- Preserves non-sshgo content in `~/.ssh/config`
+- Replaces sshgo-generated blocks (marked with `# Generated by sshgo`)
 
 ---
 
-## 其他
+## Miscellaneous
 
 ### `sshgo ping <name>`
 
-测试到目标服务器的 SSH 连通性。
+Test SSH connectivity to target server.
 
 ```bash
 sshgo ping web-server
 ```
 
-输出：`✓ user@host:port - Connected in 1.234s` 或 `✗ user@host:port - Connection failed (...)`
+Output: `✓ user@host:port - Connected in 1.234s` or `✗ user@host:port - Connection failed (...)`
 
-超时时间：5 秒（BatchMode 非交互模式）。
+Timeout: 5 seconds (BatchMode non-interactive).
 
 ### `sshgo history`
 
-查看连接历史记录。
+View connection history.
 
 ```bash
 sshgo history
@@ -275,7 +275,7 @@ sshgo history
 
 ### `sshgo completion [bash|zsh|fish]`
 
-生成 Shell 自动补全脚本。
+Generate shell completion scripts.
 
 ```bash
 # Bash

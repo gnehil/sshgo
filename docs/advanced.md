@@ -1,68 +1,68 @@
-# 高级用法
+# Advanced Usage
 
-## 从现有 SSH 配置迁移
+## Migrating from Existing SSH Config
 
-如果你有大量已有的 `~/.ssh/config` 配置：
+If you have a large existing `~/.ssh/config`:
 
 ```bash
-# 一键导入
+# Import with one command
 sshgo import
 
-# 查看导入结果
+# View import results
 sshgo list --group "Imported from SSH config"
 ```
 
-导入后支持：
-- 保留 Host 别名
-- 导入 HostName, User, Port, IdentityFile, ProxyJump
-- Include 指令展开（递归解析）
+After import supports:
+- Preserves Host aliases
+- Imports HostName, User, Port, IdentityFile, ProxyJump
+- Expands Include directives (recursive parsing)
 
-## 双向同步工作流
+## Bidirectional Sync Workflow
 
 ```bash
-# 1. sshgo 中添加或修改配置
+# 1. Add or modify config in sshgo
 sshgo add new-server --host 10.0.0.3 --user admin --group dev
 
-# 2. 同步到 SSH config（使原生 ssh 命令也能使用）
+# 2. Sync to SSH config (so native ssh command can also use it)
 sshgo sync
 
-# 3. 现在原生 ssh 也可以使用
+# 3. Now native ssh also works
 ssh new-server
 
-# 4. 如果手动编辑了 ~/.ssh/config，重新导入
+# 4. If you manually edited ~/.ssh/config, re-import
 sshgo import --overwrite
 ```
 
-## 批量操作模式
+## Batch Operations
 
-### 巡检检查
+### Health Checks
 
 ```bash
-# 检查所有生产服务器磁盘
+# Check disk on all production servers
 sshgo exec --group prod "df -h /"
 
-# 检查所有 web 服务器的服务状态
+# Check nginx status on all web servers
 sshgo exec 'web-*' "systemctl is-active nginx"
 
-# 批量重启服务
+# Batch restart services
 sshgo exec "app-1,app-2,app-3" "sudo systemctl restart app"
 ```
 
-### 配置收集
+### Configuration Collection
 
 ```bash
-# 收集所有服务器的系统信息
+# Collect system info from all production servers
 sshgo exec --group prod "hostname && cat /etc/os-release | head -3 && uptime"
 ```
 
-**注意**：批量执行在 SSH BatchMode 下运行，需要密码认证的服务器会失败。建议全部使用密钥认证。
+**Note**: Batch execution runs in SSH BatchMode. Servers requiring password authentication will fail. Consider using key authentication for all servers.
 
-### 超时控制
+### Timeout Control
 
-批量执行无默认超时限制，如果某些服务器无响应会挂起。可以配合 SSH 选项使用：
+Batch execution has no default timeout. Unresponsive servers can hang. Use SSH options to configure keepalive:
 
-```bash
-# 在 config.yaml 中为不稳定连接设置心跳
+```yaml
+# In config.yaml, set keepalive for unstable connections
 profiles:
   - name: "unstable-server"
     host: "10.0.0.5"
@@ -71,23 +71,23 @@ profiles:
     server_alive_count: 2
 ```
 
-## 跳板机高级场景
+## Advanced Jump Host Scenarios
 
-### 多层跳板链
+### Multi-hop Chains
 
-典型的企业网络架构（外层 → 内层跳板 → 目标）：
+Typical enterprise network architecture (outer → inner jump → target):
 
 ```bash
-# 方式一：CLI 添加
+# Method 1: CLI addition
 sshgo add-jump internal-db \
   --jump deploy@bastion.company.com:2222 \
   --jump ops@gateway:22
 
-# 方式二：直接编辑 YAML
-# 详见 docs/config.md 中的 JumpHost 章节
+# Method 2: Direct YAML editing
+# See JumpHost section in docs/config.md
 ```
 
-### 跳板机与端口转发结合
+### Jump Hosts with Port Forwarding
 
 ```yaml
 profiles:
@@ -104,15 +104,15 @@ profiles:
         remote_port: 5432
 ```
 
-连接后本地可通过 `localhost:5432` 访问远程数据库：
+After connecting, access the remote database via `localhost:5432`:
 
 ```bash
 sshgo internal-db
-# 在另一个终端
+# In another terminal
 psql -h localhost -p 5432 -U postgres
 ```
 
-## Shell 补全持久化
+## Persistent Shell Completion
 
 ```bash
 # Bash
@@ -125,11 +125,11 @@ echo 'eval "$(sshgo completion zsh)"' >> ~/.zshrc
 echo 'sshgo completion fish | source' >> ~/.config/fish/config.fish
 ```
 
-## 配置文件管理技巧
+## Configuration File Management
 
-### 备份恢复
+### Backup and Recovery
 
-sshgo 每次修改配置前自动创建备份：
+sshgo automatically creates a backup before each config modification:
 
 ```yaml
 ~/.sshgo/
@@ -139,15 +139,15 @@ sshgo 每次修改配置前自动创建备份：
 └── history.json
 ```
 
-手动恢复：
+Manual recovery:
 
 ```bash
 cp ~/.sshgo/config.yaml.bak.20250115_103045 ~/.sshgo/config.yaml
 ```
 
-### 配置文件版本控制
+### Version Control Configuration
 
-可以将 `~/.sshgo/config.yaml` 纳入版本控制（密码不进配置文件）：
+You can put `~/.sshgo/config.yaml` under version control (passwords don't go in config file):
 
 ```bash
 git init ~/.sshgo
@@ -155,29 +155,29 @@ git add config.yaml groups.yaml
 git commit -m "Initial SSH config version"
 ```
 
-### 手动编辑
+### Manual Editing
 
 ```bash
-# 使用你的默认编辑器
+# Use your default editor
 sshgo edit
 
-# 或指定编辑器
+# Or specify an editor
 EDITOR=nano sshgo edit
 ```
 
-## 退出码
+## Exit Codes
 
-| 退出码 | 含义 | 使用场景 |
-|--------|------|----------|
-| `0` | 成功 | - |
-| `1` | 配置/参数错误 | 脚本中检测参数合法性 |
-| `2` | 连接失败 | 自动化连接失败后重试逻辑 |
-| `3` | 批量执行部分失败 | CI/CD 中判断哪些服务器失败 |
-| `4` | 密钥链存取失败 | 安全审计 |
-| `5` | 配置文件损坏 | 检测配置文件格式问题 |
+| Exit Code | Meaning | Use Case |
+|-----------|---------|----------|
+| `0` | Success | - |
+| `1` | Config/argument error | Validate arguments in scripts |
+| `2` | Connection failed | Retry logic after automated connection failure |
+| `3` | Partial batch execution failure | Identify which servers failed in CI/CD |
+| `4` | Keychain access failure | Security audit |
+| `5` | Config file corruption | Detect config file format issues |
 
 ```bash
-# 示例：脚本中使用退出码
+# Example: Using exit codes in scripts
 if sshgo ping prod-web; then
   echo "server is up"
 else

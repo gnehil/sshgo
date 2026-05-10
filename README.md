@@ -1,39 +1,41 @@
 # sshgo
 
-> 纯 CLI 的 SSH 会话管理工具，媲美 Tabby 的 SSH 管理能力。
+[中文](docs/README_zh.md) · [English](README.md)
 
-## 特性
+> A pure CLI SSH session management tool with capabilities rivaling Tabby.
 
-- **快速连接** — `sshgo <别名>` 一键连接
-- **分组管理** — 按项目/环境组织连接
-- **跳板机支持** — 支持单层及多层跳板机链
-- **端口转发** — 内置 LocalForward 管理
-- **批量执行** — 对多台服务器并行执行命令
-- **导入导出** — 无缝导入 `~/.ssh/config`，同步导出兼容 SSH
-- **连接历史** — 自动记录，支持 `--recent` 快速重连
-- **安全凭证** — 密码存储于 OS 原生密钥链
-- **Shell 补全** — 支持 Bash / Zsh / Fish
+## Features
 
-## 安装
+- **Quick Connect** — `sshgo <alias>` connects instantly
+- **Groups** — Organize connections by project/environment
+- **Jump Host Support** — Single and multi-hop jump host chains
+- **Port Forwarding** — Built-in LocalForward management
+- **Batch Execution** — Run commands on multiple servers in parallel
+- **Import/Export** — Seamless import from and export to `~/.ssh/config`
+- **Connection History** — Auto-logged, supports `--recent` for quick reconnect
+- **Secure Credentials** — Passwords stored in OS native keychain
+- **Shell Completion** — Supports Bash / Zsh / Fish
+
+## Installation
 
 ```bash
-# 克隆仓库
-git clone https://github.com/sshgo/sshgo.git
+# Clone the repository
+git clone https://github.com/gnehil/sshgo.git
 cd sshgo
 
-# 编译
+# Build
 go build -o sshgo .
 
-# 安装到 PATH (可选)
+# Install to PATH (optional)
 sudo mv sshgo /usr/local/bin/
 ```
 
-### Shell 补全
+### Shell Completion
 
 ```bash
 # Bash
 source <(./sshgo completion bash)
-# 或永久安装
+# Or install permanently
 ./sshgo completion bash > /etc/bash_completion.d/sshgo
 
 # Zsh
@@ -43,48 +45,48 @@ source <(./sshgo completion bash)
 ./sshgo completion fish | source
 ```
 
-## 快速开始
+## Quick Start
 
 ```bash
-# 添加第一个连接
+# Add your first connection
 sshgo add web-server --host 192.168.1.10 --user deploy -p 2222
 
-# 快速连接
+# Quick connect
 sshgo web-server
 sshgo connect web-server
 
-# 查看所有连接
+# List all connections
 sshgo list
 sshgo list --format json
 
-# 删除连接
+# Delete a connection
 sshgo delete web-server
 ```
 
-## 命令参考
+## Commands
 
-| 命令 | 说明 |
-|------|------|
-| `sshgo add <name>` | 添加连接配置 |
-| `sshgo list` | 列出所有连接 |
-| `sshgo show <name>` | 显示配置详情 |
-| `sshgo edit <name>` | 编辑配置 |
-| `sshgo delete <name>` | 删除配置 |
-| `sshgo connect <name>` | 连接目标服务器 |
-| `sshgo connect --recent` | 从历史中选择连接 |
-| `sshgo group list/add/delete` | 分组管理 |
-| `sshgo add-jump <name>` | 配置跳板机 |
-| `sshgo forward add/list` | 端口转发管理 |
-| `sshgo exec <pattern>` | 批量命令执行 |
-| `sshgo import` | 从 SSH config 导入 |
-| `sshgo sync` | 同步到 SSH config |
-| `sshgo ping <name>` | 连接性测试 |
-| `sshgo history` | 查看连接历史 |
-| `sshgo completion` | 生成 Shell 补全 |
+| Command | Description |
+|---------|-------------|
+| `sshgo add <name>` | Add a connection profile |
+| `sshgo list` | List all connections |
+| `sshgo show <name>` | Show profile details |
+| `sshgo edit <name>` | Edit profile |
+| `sshgo delete <name>` | Delete a profile |
+| `sshgo connect <name>` | Connect to a server |
+| `sshgo connect --recent` | Choose from connection history |
+| `sshgo group list/add/delete` | Manage groups |
+| `sshgo add-jump <name>` | Configure jump hosts |
+| `sshgo forward add/list` | Manage port forwarding |
+| `sshgo exec <pattern>` | Batch command execution |
+| `sshgo import` | Import from SSH config |
+| `sshgo sync` | Sync to SSH config |
+| `sshgo ping <name>` | Test connectivity |
+| `sshgo history` | View connection history |
+| `sshgo completion` | Generate shell completions |
 
-## 配置文件
+## Configuration
 
-位置：`~/.sshgo/config.yaml`
+Location: `~/.sshgo/config.yaml`
 
 ```yaml
 profiles:
@@ -110,6 +112,13 @@ groups:
   - name: "prod"
     description: "Production servers"
 ```
+
+## Documentation
+
+- [Quick Start](docs/quickstart.md)
+- [Command Reference](docs/commands.md)
+- [Configuration Format](docs/config.md)
+- [Advanced Usage](docs/advanced.md)
 
 ## License
 
