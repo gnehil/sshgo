@@ -6,6 +6,7 @@
 *.dylib
 *.test
 *.out
+sshgo
 
 # Go 缓存
 go.sum
