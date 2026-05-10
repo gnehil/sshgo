@@ -1,0 +1,24 @@
+# Go 构建产物
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go 缓存
+go.sum
+vendor/
+
+# 开发文档 (不提交)
+dev/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# macOS
+.DS_Store
