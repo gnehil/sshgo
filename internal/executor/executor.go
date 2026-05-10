@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
 	"syscall"
 	"strings"
 	"github.com/sshgo/sshgo/internal/config"
+	"golang.org/x/crypto/ssh"
+	"golang.org/x/term"
 )
 
 func BuildSSHCommand(p config.Profile) (bin string, args []string) {
@@ -57,14 +60,68 @@ func ExecSSH(p config.Profile, extraArgs ...string) error {
 	return syscall.Exec(path, append([]string{bin}, args...), os.Environ())
 }
 
-func ExecWithPassword(password string, p config.Profile, extraArgs ...string) error {
-	_, args := BuildSSHCommand(p)
-	args = append(args, extraArgs...)
 
-	if sshpassPath, err := exec.LookPath("sshpass"); err == nil {
-		sshArgs := append([]string{"sshpass", "-p", password, "ssh"}, args...)
-		return syscall.Exec(sshpassPath, sshArgs, os.Environ())
+func ExecWithPassword(password string, p config.Profile, extraArgs ...string) error {
+	addr := fmt.Sprintf("%s:%d", p.Host, p.Port)
+	sshConf := &ssh.ClientConfig{
+		User: p.User,
+		Auth: []ssh.AuthMethod{
+			ssh.Password(password),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+	}
+	if p.KeepaliveInterval > 0 {
+		sshConf.SetDefaults()
 	}
 
-	return ExecSSH(p, extraArgs...)
+	client, err := ssh.Dial("tcp", addr, sshConf)
+	if err != nil {
+		return fmt.Errorf("连接失败: %w", err)
+	}
+	defer client.Close()
+
+	session, err := client.NewSession()
+	if err != nil {
+		return fmt.Errorf("创建会话失败: %w", err)
+	}
+	defer session.Close()
+
+	session.Stdout = os.Stdout
+	session.Stderr = os.Stderr
+	session.Stdin = os.Stdin
+
+	modes := ssh.TerminalModes{
+		ssh.ECHO:          1,
+		ssh.TTY_OP_ISPEED: 14400,
+		ssh.TTY_OP_OSPEED: 14400,
+	}
+
+	fd := int(os.Stdin.Fd())
+	oldState, err := term.MakeRaw(fd)
+	if err != nil {
+		return fmt.Errorf("终端设置失败: %w", err)
+	}
+	defer term.Restore(fd, oldState)
+
+	w, h, _ := term.GetSize(fd)
+	if err := session.RequestPty("xterm-256color", h, w, modes); err != nil {
+		return fmt.Errorf("PTY 请求失败: %w", err)
+	}
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGWINCH)
+	go func() {
+		for range sigCh {
+			w, h, _ = term.GetSize(fd)
+			session.WindowChange(h, w)
+		}
+	}()
+
+	err = session.Shell()
+	if err != nil {
+		return fmt.Errorf("启动 shell 失败: %w", err)
+	}
+
+	session.Wait()
+	return nil
 }
