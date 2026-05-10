@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+	"github.com/sshgo/sshgo/internal/config"
 )
 
 const version = "0.1.0"
@@ -17,6 +18,14 @@ var rootCmd = &cobra.Command{
 		}
 		return cmd.Help()
 	},
+}
+
+func loadConfig() (*config.Config, error) {
+	cfgPath, err := config.DefaultConfigPath()
+	if err != nil {
+		return nil, err
+	}
+	return config.LoadConfig(cfgPath)
 }
 
 func Execute() error {

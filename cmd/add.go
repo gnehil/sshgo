@@ -1,0 +1,68 @@
+package cmd
+
+import (
+	"fmt"
+
+	"github.com/spf13/cobra"
+	"github.com/sshgo/sshgo/internal/config"
+)
+
+var (
+	addHost  string
+	addPort  int
+	addUser  string
+	addGroup string
+)
+
+var addCmd = &cobra.Command{
+	Use:   "add <name>",
+	Short: "Add a new SSH connection profile",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runAdd(args[0])
+	},
+}
+
+func runAdd(name string) error {
+	cfgPath, err := config.DefaultConfigPath()
+	if err != nil {
+		return err
+	}
+	return runAddWithConfig(cfgPath, name, addHost, addPort, addUser, addGroup)
+}
+
+func runAddWithConfig(cfgPath, name, host string, port int, user, group string) error {
+	cfg, err := config.LoadConfig(cfgPath)
+	if err != nil {
+		return err
+	}
+	if cfg.FindProfile(name) != nil {
+		return fmt.Errorf("配置 %q 已存在", name)
+	}
+	p := config.Profile{
+		Name:  name,
+		Host:  host,
+		Port:  port,
+		User:  user,
+		Group: group,
+	}
+	if err := p.Validate(cfg); err != nil {
+		return fmt.Errorf("配置验证失败: %w", err)
+	}
+	cfg.AddProfile(p)
+	if err := config.SaveConfig(cfgPath, cfg); err != nil {
+		return err
+	}
+	fmt.Printf("✓ 已添加 %s (%s@%s:%d)\n", name, user, host, port)
+	return nil
+}
+
+func init() {
+	addCmd.Flags().StringVar(&addHost, "host", "", "SSH host (required)")
+	addCmd.Flags().IntVarP(&addPort, "port", "p", 22, "SSH port")
+	addCmd.Flags().StringVarP(&addUser, "user", "u", "", "SSH user (required)")
+	addCmd.Flags().StringVar(&addGroup, "group", "", "Group name")
+	addCmd.MarkFlagRequired("host")
+	addCmd.MarkFlagRequired("user")
+	rootCmd.AddCommand(addCmd)
+}
