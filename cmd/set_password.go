@@ -32,6 +32,25 @@ func runSetPassword(name string) error {
 	return nil
 }
 
+var deletePasswordCmd = &cobra.Command{
+	Use:   "remove-password <name>",
+	Short: "Delete saved password from keychain",
+	Aliases: []string{"del-password"},
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runDeletePassword(args[0])
+	},
+}
+
+func runDeletePassword(name string) error {
+	if err := credential.Delete(credential.KindPassword, name); err != nil {
+		return fmt.Errorf("failed to delete password: %w", err)
+	}
+	fmt.Printf("✓ Password removed for %s\n", name)
+	return nil
+}
+
 func init() {
 	rootCmd.AddCommand(setPasswordCmd)
+	rootCmd.AddCommand(deletePasswordCmd)
 }
