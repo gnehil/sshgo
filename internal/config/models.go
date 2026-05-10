@@ -48,19 +48,19 @@ var validNameRegex = regexp.MustCompile(`^[a-z0-9][a-z0-9-]*$`)
 
 func (p *Profile) Validate(cfg *Config) error {
 	if p.Name == "" {
-		return fmt.Errorf("name 不能为空")
+		return fmt.Errorf("name cannot be empty")
 	}
 	if !validNameRegex.MatchString(p.Name) {
-		return fmt.Errorf("无效的 name 格式: %q", p.Name)
+		return fmt.Errorf("invalid name format: %q", p.Name)
 	}
 	if p.Host == "" {
-		return fmt.Errorf("host 不能为空")
+		return fmt.Errorf("host cannot be empty")
 	}
 	if p.Port < 1 || p.Port > 65535 {
-		return fmt.Errorf("端口号无效: %d", p.Port)
+		return fmt.Errorf("invalid port: %d", p.Port)
 	}
 	if p.User == "" {
-		return fmt.Errorf("user 不能为空")
+		return fmt.Errorf("user cannot be empty")
 	}
 	if p.Group != "" {
 		found := false
@@ -71,27 +71,27 @@ func (p *Profile) Validate(cfg *Config) error {
 			}
 		}
 		if !found {
-			return fmt.Errorf("分组 %q 不存在", p.Group)
+			return fmt.Errorf("group %q does not exist", p.Group)
 		}
 	}
 	if p.IdentityFile != "" {
 		expanded := ExpandTilde(p.IdentityFile)
 		if _, err := os.Stat(expanded); os.IsNotExist(err) {
-			return fmt.Errorf("密钥文件不存在: %s", expanded)
+			return fmt.Errorf("identity file not found: %s", expanded)
 		}
 	}
 	for i, j := range p.JumpHosts {
 		if j.Host == "" {
-			return fmt.Errorf("jump_hosts[%d].host 不能为空", i)
+			return fmt.Errorf("jump_hosts[%d].host cannot be empty", i)
 		}
 		if j.User == "" {
-			return fmt.Errorf("jump_hosts[%d].user 不能为空", i)
+			return fmt.Errorf("jump_hosts[%d].user cannot be empty", i)
 		}
 		if j.Port == 0 {
 			j.Port = 22
 		}
 		if j.Port < 1 || j.Port > 65535 {
-			return fmt.Errorf("jump_hosts[%d].port 无效: %d", i, j.Port)
+			return fmt.Errorf("invalid jump_hosts[%d].port: %d", i, j.Port)
 		}
 	}
 	return nil

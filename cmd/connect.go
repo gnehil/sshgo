@@ -37,7 +37,7 @@ func runConnect(name string) error {
 	}
 	p := cfg.FindProfile(name)
 	if p == nil {
-		return fmt.Errorf("配置 %q 不存在", name)
+		return fmt.Errorf("profile %q not found", name)
 	}
 	histPath, _ := config.DefaultHistoryPath()
 	h := history.NewTracker(histPath)
@@ -77,7 +77,7 @@ func runConnectRecent() error {
 	h := history.NewTracker(histPath)
 	recent := h.Recent(10)
 	if len(recent) == 0 {
-		return fmt.Errorf("没有连接历史")
+		return fmt.Errorf("no connection history")
 	}
 	fmt.Println("Recent connections:")
 	for i, r := range recent {
@@ -87,7 +87,7 @@ func runConnectRecent() error {
 	var n int
 	fmt.Scanln(&n)
 	if n < 1 || n > len(recent) {
-		return fmt.Errorf("无效选择")
+		return fmt.Errorf("invalid selection")
 	}
 	return runConnect(recent[n-1].Name)
 }

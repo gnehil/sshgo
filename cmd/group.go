@@ -60,7 +60,7 @@ func runGroupAdd(name string) error {
 		return err
 	}
 	if cfg.FindGroup(name) != nil {
-		return fmt.Errorf("分组 %q 已存在", name)
+		return fmt.Errorf("group %q already exists", name)
 	}
 	cfg.Groups = append(cfg.Groups, config.Group{Name: name, Description: groupDesc})
 	cfgPath, _ := config.DefaultConfigPath()
@@ -90,7 +90,7 @@ func runGroupDelete(name string) error {
 		}
 	}
 	if !found {
-		return fmt.Errorf("分组 %q 不存在", name)
+		return fmt.Errorf("group %q not found", name)
 	}
 	cfgPath, _ := config.DefaultConfigPath()
 	return config.SaveConfig(cfgPath, cfg)

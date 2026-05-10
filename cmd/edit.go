@@ -27,7 +27,7 @@ func editProfile(name string) error {
 		return err
 	}
 	if cfg.FindProfile(name) == nil {
-		return fmt.Errorf("配置 %q 不存在", name)
+		return fmt.Errorf("profile %q not found", name)
 	}
 	cfgPath, err := config.DefaultConfigPath()
 	if err != nil {

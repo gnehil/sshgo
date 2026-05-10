@@ -77,8 +77,8 @@ func GenerateSSHConfig(cfg *config.Config, dryRun bool) error {
 	}
 	fullContent := existingContent + buf.String()
 	if err := os.WriteFile(sshConfigPath, []byte(fullContent), 0600); err != nil {
-		return fmt.Errorf("写入 ~/.ssh/config 失败: %w", err)
+		return fmt.Errorf("failed to write ~/.ssh/config: %w", err)
 	}
-	fmt.Println("✓ 已同步到 ~/.ssh/config")
+	fmt.Println("✓ Synced to ~/.ssh/config")
 	return nil
 }

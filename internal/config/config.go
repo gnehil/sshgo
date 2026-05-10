@@ -11,7 +11,7 @@ import (
 func DefaultConfigDir() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return "", fmt.Errorf("无法获取 home 目录: %w", err)
+		return "", fmt.Errorf("unable to get home directory: %w", err)
 	}
 	return filepath.Join(home, ".sshgo"), nil
 }
@@ -38,11 +38,11 @@ func LoadConfig(path string) (*Config, error) {
 		if os.IsNotExist(err) {
 			return &Config{}, nil
 		}
-		return nil, fmt.Errorf("读取配置文件失败: %w", err)
+		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 	var cfg Config
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("配置文件格式错误: %w", err)
+		return nil, fmt.Errorf("malformed config file: %w", err)
 	}
 	return &cfg, nil
 }
@@ -50,19 +50,19 @@ func LoadConfig(path string) (*Config, error) {
 func SaveConfig(path string, cfg *Config) error {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0700); err != nil {
-		return fmt.Errorf("创建配置目录失败: %w", err)
+		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 	if _, err := os.Stat(path); err == nil {
 		if err := backupConfig(path); err != nil {
-			return fmt.Errorf("备份配置失败: %w", err)
+			return fmt.Errorf("failed to backup config: %w", err)
 		}
 	}
 	data, err := yaml.Marshal(cfg)
 	if err != nil {
-		return fmt.Errorf("序列化配置失败: %w", err)
+		return fmt.Errorf("failed to marshal config: %w", err)
 	}
 	if err := os.WriteFile(path, data, 0600); err != nil {
-		return fmt.Errorf("写入配置文件失败: %w", err)
+		return fmt.Errorf("failed to write config file: %w", err)
 	}
 	return nil
 }

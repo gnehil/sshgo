@@ -28,7 +28,7 @@ func runExec(pattern, command string) error {
 	}
 	targets := batch.FindTargets(cfg, pattern, execGroup)
 	if len(targets) == 0 {
-		return fmt.Errorf("没有找到匹配的服务器")
+		return fmt.Errorf("no matching servers found")
 	}
 	var execTargets []batch.Target
 	for _, t := range targets {

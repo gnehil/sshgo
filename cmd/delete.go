@@ -23,13 +23,13 @@ func runDelete(name string) error {
 		return err
 	}
 	if !cfg.RemoveProfile(name) {
-		return fmt.Errorf("配置 %q 不存在", name)
+		return fmt.Errorf("profile %q not found", name)
 	}
 	cfgPath, _ := config.DefaultConfigPath()
 	if err := config.SaveConfig(cfgPath, cfg); err != nil {
 		return err
 	}
-	fmt.Printf("✓ 已删除 %s\n", name)
+	fmt.Printf("✓ Deleted %s\n", name)
 	return nil
 }
 

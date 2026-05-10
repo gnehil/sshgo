@@ -26,14 +26,14 @@ func runAddJump(name string) error {
 	}
 	p := cfg.FindProfile(name)
 	if p == nil {
-		return fmt.Errorf("配置 %q 不存在", name)
+		return fmt.Errorf("profile %q not found", name)
 	}
 	var jumps []config.JumpHost
 	for _, j := range jumpHosts {
 		jumps = append(jumps, parseJumpHostArg(j))
 	}
 	if len(jumps) == 0 {
-		return fmt.Errorf("请使用 --jump 指定跳板机")
+		return fmt.Errorf("use --jump to specify jump host")
 	}
 	p.JumpHosts = jumps
 	cfgPath, _ := config.DefaultConfigPath()

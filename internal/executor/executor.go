@@ -55,7 +55,7 @@ func ExecSSH(p config.Profile, extraArgs ...string) error {
 	args = append(args, extraArgs...)
 	path, err := exec.LookPath(bin)
 	if err != nil {
-		return fmt.Errorf("找不到 ssh 命令: %w", err)
+		return fmt.Errorf("ssh command not found: %w", err)
 	}
 	return syscall.Exec(path, append([]string{bin}, args...), os.Environ())
 }
@@ -76,13 +76,13 @@ func ExecWithPassword(password string, p config.Profile, extraArgs ...string) er
 
 	client, err := ssh.Dial("tcp", addr, sshConf)
 	if err != nil {
-		return fmt.Errorf("连接失败: %w", err)
+		return fmt.Errorf("connection failed: %w", err)
 	}
 	defer client.Close()
 
 	session, err := client.NewSession()
 	if err != nil {
-		return fmt.Errorf("创建会话失败: %w", err)
+		return fmt.Errorf("failed to create session: %w", err)
 	}
 	defer session.Close()
 
@@ -99,13 +99,13 @@ func ExecWithPassword(password string, p config.Profile, extraArgs ...string) er
 	fd := int(os.Stdin.Fd())
 	oldState, err := term.MakeRaw(fd)
 	if err != nil {
-		return fmt.Errorf("终端设置失败: %w", err)
+		return fmt.Errorf("terminal setup failed: %w", err)
 	}
 	defer term.Restore(fd, oldState)
 
 	w, h, _ := term.GetSize(fd)
 	if err := session.RequestPty("xterm-256color", h, w, modes); err != nil {
-		return fmt.Errorf("PTY 请求失败: %w", err)
+		return fmt.Errorf("PTY request failed: %w", err)
 	}
 
 	sigCh := make(chan os.Signal, 1)
@@ -119,7 +119,7 @@ func ExecWithPassword(password string, p config.Profile, extraArgs ...string) er
 
 	err = session.Shell()
 	if err != nil {
-		return fmt.Errorf("启动 shell 失败: %w", err)
+		return fmt.Errorf("failed to start shell: %w", err)
 	}
 
 	session.Wait()

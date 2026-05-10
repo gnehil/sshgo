@@ -27,11 +27,11 @@ func runImport() error {
 		sourcePath = config.ExpandTilde("~/.ssh/config")
 	}
 	if _, err := os.Stat(sourcePath); os.IsNotExist(err) {
-		return fmt.Errorf("源文件不存在: %s", sourcePath)
+		return fmt.Errorf("source file not found: %s", sourcePath)
 	}
 	profiles, err := sshconfig.ParseSSHConfig(sourcePath)
 	if err != nil {
-		return fmt.Errorf("解析失败: %w", err)
+		return fmt.Errorf("parse error: %w", err)
 	}
 	if len(profiles) == 0 {
 		fmt.Println("No profiles found in SSH config.")

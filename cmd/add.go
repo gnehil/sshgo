@@ -37,7 +37,7 @@ func runAddWithConfig(cfgPath, name, host string, port int, user, group string) 
 		return err
 	}
 	if cfg.FindProfile(name) != nil {
-		return fmt.Errorf("配置 %q 已存在", name)
+		return fmt.Errorf("profile %q already exists", name)
 	}
 	p := config.Profile{
 		Name:  name,
@@ -47,13 +47,13 @@ func runAddWithConfig(cfgPath, name, host string, port int, user, group string) 
 		Group: group,
 	}
 	if err := p.Validate(cfg); err != nil {
-		return fmt.Errorf("配置验证失败: %w", err)
+		return fmt.Errorf("validation failed: %w", err)
 	}
 	cfg.AddProfile(p)
 	if err := config.SaveConfig(cfgPath, cfg); err != nil {
 		return err
 	}
-	fmt.Printf("✓ 已添加 %s (%s@%s:%d)\n", name, user, host, port)
+	fmt.Printf("✓ Added %s (%s@%s:%d)\n", name, user, host, port)
 	return nil
 }
 

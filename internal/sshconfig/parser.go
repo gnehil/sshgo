@@ -13,7 +13,7 @@ import (
 func ParseSSHConfig(path string) ([]config.Profile, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("无法读取 %s: %w", path, err)
+		return nil, fmt.Errorf("unable to read %s: %w", path, err)
 	}
 	defer f.Close()
 	var profiles []config.Profile

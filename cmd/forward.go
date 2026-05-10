@@ -32,7 +32,7 @@ func runForwardAdd(name string) error {
 	}
 	p := cfg.FindProfile(name)
 	if p == nil {
-		return fmt.Errorf("配置 %q 不存在", name)
+		return fmt.Errorf("profile %q not found", name)
 	}
 	var fp config.ForwardPort
 	if localForward != "" {
@@ -50,7 +50,7 @@ func runForwardAdd(name string) error {
 		}
 	}
 	if fp.LocalPort == 0 {
-		return fmt.Errorf("请使用 -L 指定转发规则")
+		return fmt.Errorf("use -L to specify forward rule")
 	}
 	p.ForwardPorts = append(p.ForwardPorts, fp)
 	cfgPath, _ := config.DefaultConfigPath()

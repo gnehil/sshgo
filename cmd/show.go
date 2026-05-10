@@ -22,7 +22,7 @@ func runShow(name string) error {
 	}
 	p := cfg.FindProfile(name)
 	if p == nil {
-		return fmt.Errorf("配置 %q 不存在", name)
+		return fmt.Errorf("profile %q not found", name)
 	}
 	fmt.Printf("Name:        %s\n", p.Name)
 	fmt.Printf("Host:        %s\n", p.Host)
