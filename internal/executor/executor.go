@@ -43,6 +43,10 @@ func BuildSSHCommand(p config.Profile) (bin string, args []string) {
 	return "ssh", args
 }
 
+func HasIdentityKey(p config.Profile) bool {
+	return p.IdentityFile != ""
+}
+
 func ExecSSH(p config.Profile, extraArgs ...string) error {
 	bin, args := BuildSSHCommand(p)
 	args = append(args, extraArgs...)
@@ -51,4 +55,16 @@ func ExecSSH(p config.Profile, extraArgs ...string) error {
 		return fmt.Errorf("找不到 ssh 命令: %w", err)
 	}
 	return syscall.Exec(path, append([]string{bin}, args...), os.Environ())
+}
+
+func ExecWithPassword(password string, p config.Profile, extraArgs ...string) error {
+	_, args := BuildSSHCommand(p)
+	args = append(args, extraArgs...)
+
+	if sshpassPath, err := exec.LookPath("sshpass"); err == nil {
+		sshArgs := append([]string{"sshpass", "-p", password, "ssh"}, args...)
+		return syscall.Exec(sshpassPath, sshArgs, os.Environ())
+	}
+
+	return ExecSSH(p, extraArgs...)
 }

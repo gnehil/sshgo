@@ -59,3 +59,12 @@ func TestBuildSSHCommand_PortForward(t *testing.T) {
 		t.Errorf("expected -L 8080:localhost:80 in args: %v", args)
 	}
 }
+
+func TestHasIdentityKey(t *testing.T) {
+	if HasIdentityKey(config.Profile{IdentityFile: "~/.ssh/key"}) {
+		t.Log("key-based auth detected")
+	}
+	if HasIdentityKey(config.Profile{}) {
+		t.Error("empty profile should not have identity key")
+	}
+}

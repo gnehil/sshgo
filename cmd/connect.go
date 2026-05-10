@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/sshgo/sshgo/internal/config"
+	"github.com/sshgo/sshgo/internal/credential"
 	"github.com/sshgo/sshgo/internal/executor"
 	"github.com/sshgo/sshgo/internal/history"
 )
@@ -40,6 +41,13 @@ func runConnect(name string) error {
 	h := history.NewTracker(histPath)
 	h.Record(name)
 	_ = h.Save()
+
+	if !executor.HasIdentityKey(*p) {
+		password, _ := credential.Get(credential.KindPassword, name)
+		if password != "" {
+			return executor.ExecWithPassword(password, *p)
+		}
+	}
 	return executor.ExecSSH(*p)
 }
 
