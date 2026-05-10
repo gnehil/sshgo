@@ -46,8 +46,9 @@ func ParseSSHConfig(path string) ([]config.Profile, error) {
 			}
 		case "port":
 			if current != nil {
-				p, _ := strconv.Atoi(value)
-				current.Port = p
+				if p, err := strconv.Atoi(value); err == nil {
+					current.Port = p
+				}
 			}
 		case "identityfile":
 			if current != nil {
@@ -80,8 +81,7 @@ func parseJumpHost(addr string) config.JumpHost {
 		addr = addr[at+1:]
 	}
 	if colon := strings.LastIndex(addr, ":"); colon >= 0 {
-		p, _ := strconv.Atoi(addr[colon+1:])
-		if p > 0 {
+		if p, err := strconv.Atoi(addr[colon+1:]); err == nil && p > 0 {
 			jh.Port = p
 		}
 		jh.Host = addr[:colon]

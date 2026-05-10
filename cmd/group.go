@@ -92,6 +92,11 @@ func runGroupDelete(name string) error {
 	if !found {
 		return fmt.Errorf("group %q not found", name)
 	}
+	for i := range cfg.Profiles {
+		if cfg.Profiles[i].Group == name {
+			cfg.Profiles[i].Group = ""
+		}
+	}
 	cfgPath, _ := config.DefaultConfigPath()
 	return config.SaveConfig(cfgPath, cfg)
 }

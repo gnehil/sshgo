@@ -42,10 +42,15 @@ func runConnect(name string) error {
 	histPath, _ := config.DefaultHistoryPath()
 	h := history.NewTracker(histPath)
 	h.Record(name)
-	_ = h.Save()
+	if err := h.Save(); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to save history: %v\n", err)
+	}
 
 	if !executor.HasIdentityKey(*p) {
-		password, _ := credential.Get(credential.KindPassword, name)
+		password, err := credential.Get(credential.KindPassword, name)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: credential lookup failed: %v\n", err)
+		}
 		if password != "" {
 			return executor.ExecWithPassword(password, *p)
 		}
@@ -85,7 +90,9 @@ func runConnectRecent() error {
 	}
 	fmt.Print("\nSelect a number: ")
 	var n int
-	fmt.Scanln(&n)
+	if _, err := fmt.Scanln(&n); err != nil {
+		return fmt.Errorf("invalid input: %w", err)
+	}
 	if n < 1 || n > len(recent) {
 		return fmt.Errorf("invalid selection")
 	}

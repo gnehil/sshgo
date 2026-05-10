@@ -47,6 +47,11 @@ func runImport() error {
 			skipped++
 			continue
 		}
+		if err := p.Validate(cfg); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: skipping invalid profile %q: %v\n", p.Name, err)
+			skipped++
+			continue
+		}
 		p.Group = "Imported from SSH config"
 		if cfg.FindGroup("Imported from SSH config") == nil {
 			cfg.Groups = append(cfg.Groups, config.Group{Name: "Imported from SSH config", Description: "Auto-imported from OpenSSH config"})

@@ -1,9 +1,6 @@
 package cmd
 
 import (
-	"os"
-	"strings"
-
 	"github.com/spf13/cobra"
 	"github.com/sshgo/sshgo/internal/config"
 )
@@ -38,9 +35,5 @@ func init() {
 }
 
 func Execute() error {
-	err := rootCmd.Execute()
-	if err != nil && strings.Contains(err.Error(), "unknown command") && len(os.Args) > 1 {
-		return runConnect(os.Args[1])
-	}
-	return err
+	return rootCmd.Execute()
 }

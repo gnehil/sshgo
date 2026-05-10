@@ -20,7 +20,7 @@ func Set(kind, name, value string) error {
 func Get(kind, name string) (string, error) {
 	val, err := keyring.Get(keyPrefix, Key(kind, name))
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	return val, nil
 }

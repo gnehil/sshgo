@@ -27,9 +27,7 @@ func runPing(name string) error {
 		return fmt.Errorf("profile %q not found", name)
 	}
 	bin, args := executor.BuildSSHCommand(*p)
-	args = append(args, "-o", "ConnectTimeout=5", "-o", "BatchMode=yes")
-	lastArg := args[len(args)-1]
-	args[len(args)-1] = lastArg + " echo 'Connection OK'"
+	args = append(args, "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", "echo", "Connection OK")
 	start := time.Now()
 	command := exec.Command(bin, args...)
 	err = command.Run()

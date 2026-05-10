@@ -28,7 +28,7 @@ func runSetPassword(name string) error {
 	if err := credential.Set(credential.KindPassword, name, string(password)); err != nil {
 		return fmt.Errorf("failed to store password: %w", err)
 	}
-	fmt.Printf("✓ Password saved for %s\n", name)
+	fmt.Printf("[OK] Password saved for %s\n", name)
 	return nil
 }
 
@@ -46,7 +46,7 @@ func runDeletePassword(name string) error {
 	if err := credential.Delete(credential.KindPassword, name); err != nil {
 		return fmt.Errorf("failed to delete password: %w", err)
 	}
-	fmt.Printf("✓ Password removed for %s\n", name)
+	fmt.Printf("[OK] Password removed for %s\n", name)
 	return nil
 }
 

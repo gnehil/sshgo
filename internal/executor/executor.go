@@ -1,12 +1,19 @@
 package executor
 
 import (
+	"bufio"
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"os/signal"
-	"syscall"
+	"path/filepath"
 	"strings"
+	"syscall"
+	"time"
+
 	"github.com/sshgo/sshgo/internal/config"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/term"
@@ -62,7 +69,11 @@ func ExecSSH(p config.Profile, extraArgs ...string) error {
 
 
 func ExecWithPassword(password string, p config.Profile, extraArgs ...string) error {
-	addr := fmt.Sprintf("%s:%d", p.Host, p.Port)
+	port := p.Port
+	if port == 0 {
+		port = 22
+	}
+	addr := fmt.Sprintf("%s:%d", p.Host, port)
 
 	sshConf := &ssh.ClientConfig{
 		User: p.User,
@@ -76,7 +87,8 @@ func ExecWithPassword(password string, p config.Profile, extraArgs ...string) er
 				return answers, nil
 			}),
 		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		HostKeyCallback: knownHostsCallback(),
+		Timeout:         10 * time.Second,
 	}
 
 	var client *ssh.Client
@@ -128,6 +140,7 @@ func ExecWithPassword(password string, p config.Profile, extraArgs ...string) er
 			session.WindowChange(h, w)
 		}
 	}()
+	defer signal.Stop(sigCh)
 
 	err = session.Shell()
 	if err != nil {
@@ -141,22 +154,14 @@ func ExecWithPassword(password string, p config.Profile, extraArgs ...string) er
 func connectViaJump(password string, p config.Profile, addr string, sshConf *ssh.ClientConfig) (*ssh.Client, error) {
 	var last *ssh.Client
 	for _, j := range p.JumpHosts {
-		jAddr := fmt.Sprintf("%s:%d", j.Host, j.Port)
 		jConf := &ssh.ClientConfig{
-			User: j.User,
-			Auth: []ssh.AuthMethod{
-				ssh.Password(password),
-				ssh.KeyboardInteractive(func(user, instruction string, questions []string, echos []bool) (answers []string, err error) {
-					answers = make([]string, len(questions))
-					for i := range questions {
-						answers[i] = password
-					}
-					return answers, nil
-				}),
-			},
-			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+			User:            j.User,
+			HostKeyCallback: knownHostsCallback(),
+			Timeout:         10 * time.Second,
 		}
-
+		// TODO: Jump hosts currently don't have per-host credential storage.
+		// Using key-based auth only. If a jump host requires password auth,
+		// add per-jump-host credential storage and integrate it here.
 		if j.IdentityFile != "" {
 			key, err := loadKey(config.ExpandTilde(j.IdentityFile))
 			if err == nil && key != nil {
@@ -164,31 +169,39 @@ func connectViaJump(password string, p config.Profile, addr string, sshConf *ssh
 			}
 		}
 
-		conn, err := dialWithBastion(last, "tcp", jAddr, jConf)
+		jAddr := fmt.Sprintf("%s:%d", j.Host, j.Port)
+		netConn, err := net.DialTimeout("tcp", jAddr, 10*time.Second)
 		if err != nil {
-			return nil, fmt.Errorf("jump host %s (%s@%s:%d): %w", j.Name, j.User, j.Host, j.Port, err)
+			return nil, fmt.Errorf("jump host connect %s (%s@%s:%d): %w", j.Name, j.User, j.Host, j.Port, err)
 		}
-		last = conn
+		c, chans, reqs, err := ssh.NewClientConn(netConn, jAddr, jConf)
+		if err != nil {
+			netConn.Close()
+			return nil, fmt.Errorf("jump host handshake %s (%s@%s:%d): %w", j.Name, j.User, j.Host, j.Port, err)
+		}
+		last = ssh.NewClient(c, chans, reqs)
 	}
 
 	if last == nil {
-		return ssh.Dial("tcp", addr, sshConf)
+		netConn, err := net.DialTimeout("tcp", addr, 10*time.Second)
+		if err != nil {
+			return nil, fmt.Errorf("target connect %s: %w", addr, err)
+		}
+		c, chans, reqs, err := ssh.NewClientConn(netConn, addr, sshConf)
+		if err != nil {
+			netConn.Close()
+			return nil, fmt.Errorf("target handshake %s: %w", addr, err)
+		}
+		return ssh.NewClient(c, chans, reqs), nil
 	}
 
-	conn, err := dialWithBastion(last, "tcp", addr, sshConf)
+	netConn, err := net.DialTimeout("tcp", addr, 10*time.Second)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("target connect through bastion %s: %w", addr, err)
 	}
-	return conn, nil
-}
-
-func dialWithBastion(bastion *ssh.Client, network, addr string, config *ssh.ClientConfig) (*ssh.Client, error) {
-	conn, err := bastion.Dial(network, addr)
+	c, chans, reqs, err := ssh.NewClientConn(netConn, addr, sshConf)
 	if err != nil {
-		return nil, err
-	}
-	c, chans, reqs, err := ssh.NewClientConn(conn, addr, config)
-	if err != nil {
+		netConn.Close()
 		return nil, err
 	}
 	return ssh.NewClient(c, chans, reqs), nil
@@ -204,4 +217,132 @@ func loadKey(path string) (ssh.AuthMethod, error) {
 		return nil, err
 	}
 	return ssh.PublicKeys(key), nil
+}
+
+// knownHostsCallback reads ~/.ssh/known_hosts and returns a HostKeyCallback.
+// It falls back to prompting the user if no known entry is found.
+func knownHostsCallback() ssh.HostKeyCallback {
+	return func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+		known, err := checkKnownHosts(hostname, remote, key)
+		if err != nil {
+			return err
+		}
+		if !known {
+			return promptHostKey(hostname, remote, key)
+		}
+		return nil
+	}
+}
+
+func checkKnownHosts(hostname string, remote net.Addr, key ssh.PublicKey) (bool, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return false, fmt.Errorf("cannot determine home directory: %w", err)
+	}
+	knownHostsPath := filepath.Join(home, ".ssh", "known_hosts")
+
+	f, err := os.Open(knownHostsPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	defer f.Close()
+
+	hostStr := hostname
+	if port := extractPort(remote); port != "" && port != "22" {
+		hostStr = "[" + hostname + "]:" + port
+	}
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "#") || line == "" {
+			continue
+		}
+		parts := strings.SplitN(line, " ", 3)
+		if len(parts) < 3 {
+			continue
+		}
+		hostField := parts[0]
+
+		// Check if hostname matches (supports comma-separated hosts)
+		hostMatch := false
+		for _, h := range strings.Split(hostField, ",") {
+			if h == hostStr {
+				hostMatch = true
+				break
+			}
+		}
+		if !hostMatch {
+			continue
+		}
+
+		pubKey, _, _, _, errKey := ssh.ParseAuthorizedKey([]byte(line))
+		if errKey != nil {
+			continue
+		}
+
+		if string(pubKey.Marshal()) == string(key.Marshal()) {
+			return true, nil
+		}
+		return false, fmt.Errorf("WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED for %s!", hostStr)
+	}
+	return false, scanner.Err()
+}
+
+func extractPort(remote net.Addr) string {
+	_, port, err := net.SplitHostPort(remote.String())
+	if err != nil {
+		return ""
+	}
+	return port
+}
+
+func promptHostKey(hostname string, remote net.Addr, key ssh.PublicKey) error {
+	sum := sha256.Sum256(key.Marshal())
+	fingerprint := "SHA256:" + base64.StdEncoding.EncodeToString(sum[:])
+
+	fmt.Printf("\nThe authenticity of host '%s' can't be established.\n", hostname)
+	fmt.Printf("%s key fingerprint is %s.\n", key.Type(), fingerprint)
+	fmt.Print("Are you sure you want to continue connecting (yes/no)? ")
+
+	scanner := bufio.NewScanner(os.Stdin)
+	if scanner.Scan() {
+		resp := strings.TrimSpace(scanner.Text())
+		if resp != "yes" {
+			return fmt.Errorf("host key verification cancelled")
+		}
+	}
+
+	return addToKnownHosts(hostname, remote, key)
+}
+
+func addToKnownHosts(hostname string, remote net.Addr, key ssh.PublicKey) error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("cannot determine home directory: %w", err)
+	}
+	sshDir := filepath.Join(home, ".ssh")
+	if err := os.MkdirAll(sshDir, 0700); err != nil {
+		return err
+	}
+	knownHostsPath := filepath.Join(sshDir, "known_hosts")
+
+	hostStr := hostname
+	if port := extractPort(remote); port != "" && port != "22" {
+		hostStr = "[" + hostname + "]:" + port
+	}
+
+	line := fmt.Sprintf("%s %s %s\n", hostStr, key.Type(), base64.StdEncoding.EncodeToString(key.Marshal()))
+
+	f, err := os.OpenFile(knownHostsPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	_, err = f.WriteString(line)
+	return err
 }

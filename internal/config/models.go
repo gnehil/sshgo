@@ -88,7 +88,7 @@ func (p *Profile) Validate(cfg *Config) error {
 			return fmt.Errorf("jump_hosts[%d].user cannot be empty", i)
 		}
 		if j.Port == 0 {
-			j.Port = 22
+			p.JumpHosts[i].Port = 22
 		}
 		if j.Port < 1 || j.Port > 65535 {
 			return fmt.Errorf("invalid jump_hosts[%d].port: %d", i, j.Port)

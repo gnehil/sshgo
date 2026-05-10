@@ -50,7 +50,9 @@ func GenerateSSHConfig(cfg *config.Config, dryRun bool) error {
 	home, _ := os.UserHomeDir()
 	sshConfigPath := filepath.Join(home, ".ssh", "config")
 	if orig, err := os.ReadFile(sshConfigPath); err == nil {
-		os.WriteFile(sshConfigPath+".sshgo.bak", orig, 0600)
+		if err := os.WriteFile(sshConfigPath+".sshgo.bak", orig, 0600); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to backup ~/.ssh/config: %v\n", err)
+		}
 	}
 	existingContent := ""
 	if orig, err := os.ReadFile(sshConfigPath); err == nil {
@@ -79,6 +81,6 @@ func GenerateSSHConfig(cfg *config.Config, dryRun bool) error {
 	if err := os.WriteFile(sshConfigPath, []byte(fullContent), 0600); err != nil {
 		return fmt.Errorf("failed to write ~/.ssh/config: %w", err)
 	}
-	fmt.Println("✓ Synced to ~/.ssh/config")
+	fmt.Println("[OK] Synced to ~/.ssh/config")
 	return nil
 }

@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/sshgo/sshgo/internal/config"
+	"github.com/sshgo/sshgo/internal/credential"
 )
 
 var deleteCmd = &cobra.Command{
@@ -29,7 +30,8 @@ func runDelete(name string) error {
 	if err := config.SaveConfig(cfgPath, cfg); err != nil {
 		return err
 	}
-	fmt.Printf("✓ Deleted %s\n", name)
+	credential.Delete(credential.KindPassword, name)
+	fmt.Printf("[OK] Deleted %s\n", name)
 	return nil
 }
 

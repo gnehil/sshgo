@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 	"gopkg.in/yaml.v3"
 )
@@ -74,7 +75,35 @@ func backupConfig(path string) error {
 	}
 	timestamp := time.Now().Format("20060102_150405")
 	backupPath := fmt.Sprintf("%s.bak.%s", path, timestamp)
-	return os.WriteFile(backupPath, data, 0600)
+	if err := os.WriteFile(backupPath, data, 0600); err != nil {
+		return err
+	}
+	return cleanupOldBackups(path, 5)
+}
+
+func cleanupOldBackups(path string, keep int) error {
+	dir := filepath.Dir(path)
+	base := filepath.Base(path)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+	var backups []string
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		if strings.HasPrefix(e.Name(), base+".bak.") {
+			backups = append(backups, filepath.Join(dir, e.Name()))
+		}
+	}
+	if len(backups) <= keep {
+		return nil
+	}
+	for i := 0; i < len(backups)-keep; i++ {
+		os.Remove(backups[i])
+	}
+	return nil
 }
 
 func (c *Config) FindProfile(name string) *Profile {

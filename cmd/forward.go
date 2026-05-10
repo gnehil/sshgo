@@ -38,13 +38,29 @@ func runForwardAdd(name string) error {
 	if localForward != "" {
 		parts := strings.Split(localForward, ":")
 		if len(parts) == 2 {
-			fp.LocalPort, _ = strconv.Atoi(parts[0])
+			localPort, err := strconv.Atoi(parts[0])
+			if err != nil {
+				return fmt.Errorf("invalid local port %q: %w", parts[0], err)
+			}
+			fp.LocalPort = localPort
 			fp.RemoteHost = "localhost"
-			fp.RemotePort, _ = strconv.Atoi(parts[1])
+			remotePort, err := strconv.Atoi(parts[1])
+			if err != nil {
+				return fmt.Errorf("invalid remote port %q: %w", parts[1], err)
+			}
+			fp.RemotePort = remotePort
 		} else if len(parts) == 3 {
-			fp.LocalPort, _ = strconv.Atoi(parts[0])
+			localPort, err := strconv.Atoi(parts[0])
+			if err != nil {
+				return fmt.Errorf("invalid local port %q: %w", parts[0], err)
+			}
+			fp.LocalPort = localPort
 			fp.RemoteHost = parts[1]
-			fp.RemotePort, _ = strconv.Atoi(parts[2])
+			remotePort, err := strconv.Atoi(parts[2])
+			if err != nil {
+				return fmt.Errorf("invalid remote port %q: %w", parts[2], err)
+			}
+			fp.RemotePort = remotePort
 		} else {
 			return fmt.Errorf("invalid -L format: expected local_port:remote_host:remote_port")
 		}

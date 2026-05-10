@@ -53,7 +53,7 @@ func runAddWithConfig(cfgPath, name, host string, port int, user, group string) 
 	if err := config.SaveConfig(cfgPath, cfg); err != nil {
 		return err
 	}
-	fmt.Printf("✓ Added %s (%s@%s:%d)\n", name, user, host, port)
+	fmt.Printf("[OK] Added %s (%s@%s:%d)\n", name, user, host, port)
 	return nil
 }
 
