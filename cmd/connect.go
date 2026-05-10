@@ -2,12 +2,14 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/sshgo/sshgo/internal/config"
 	"github.com/sshgo/sshgo/internal/credential"
 	"github.com/sshgo/sshgo/internal/executor"
 	"github.com/sshgo/sshgo/internal/history"
+	"golang.org/x/term"
 )
 
 var recentFlag bool
@@ -47,6 +49,22 @@ func runConnect(name string) error {
 		if password != "" {
 			return executor.ExecWithPassword(password, *p)
 		}
+		fmt.Printf("Password for %s (%s@%s): ", name, p.User, p.Host)
+		pwd, err := readPassword()
+		if err != nil {
+			return err
+		}
+		if len(pwd) > 0 {
+			fmt.Printf("Save password to keychain? [y/N]: ")
+			var ans string
+			fmt.Scanln(&ans)
+			if ans == "y" || ans == "Y" {
+				if err := credential.Set(credential.KindPassword, name, string(pwd)); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to save password: %v\n", err)
+				}
+			}
+			return executor.ExecWithPassword(string(pwd), *p)
+		}
 	}
 	return executor.ExecSSH(*p)
 }
@@ -72,6 +90,12 @@ func runConnectRecent() error {
 		return fmt.Errorf("无效选择")
 	}
 	return runConnect(recent[n-1].Name)
+}
+
+func readPassword() ([]byte, error) {
+	pw, err := term.ReadPassword(int(os.Stdin.Fd()))
+	fmt.Println()
+	return pw, err
 }
 
 func init() {

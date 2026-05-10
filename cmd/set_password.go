@@ -2,11 +2,9 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/sshgo/sshgo/internal/credential"
-	"golang.org/x/term"
 )
 
 var setPasswordCmd = &cobra.Command{
@@ -20,8 +18,7 @@ var setPasswordCmd = &cobra.Command{
 
 func runSetPassword(name string) error {
 	fmt.Print("Password: ")
-	password, err := term.ReadPassword(int(os.Stdin.Fd()))
-	fmt.Println()
+	password, err := readPassword()
 	if err != nil {
 		return err
 	}
