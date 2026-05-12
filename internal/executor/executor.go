@@ -67,7 +67,6 @@ func ExecSSH(p config.Profile, extraArgs ...string) error {
 	return syscall.Exec(path, append([]string{bin}, args...), os.Environ())
 }
 
-
 func ExecWithPassword(password string, p config.Profile, extraArgs ...string) error {
 	port := p.Port
 	if port == 0 {
@@ -76,17 +75,8 @@ func ExecWithPassword(password string, p config.Profile, extraArgs ...string) er
 	addr := fmt.Sprintf("%s:%d", p.Host, port)
 
 	sshConf := &ssh.ClientConfig{
-		User: p.User,
-		Auth: []ssh.AuthMethod{
-			ssh.Password(password),
-			ssh.KeyboardInteractive(func(user, instruction string, questions []string, echos []bool) (answers []string, err error) {
-				answers = make([]string, len(questions))
-				for i := range questions {
-					answers[i] = password
-				}
-				return answers, nil
-			}),
-		},
+		User:            p.User,
+		Auth:            passwordAuthMethods(password),
 		HostKeyCallback: knownHostsCallback(),
 		Timeout:         10 * time.Second,
 	}
@@ -152,7 +142,13 @@ func ExecWithPassword(password string, p config.Profile, extraArgs ...string) er
 }
 
 func connectViaJump(password string, p config.Profile, addr string, sshConf *ssh.ClientConfig) (*ssh.Client, error) {
-	var last *ssh.Client
+	var jumpClients []*ssh.Client
+	closeJumpClients := func() {
+		for i := len(jumpClients) - 1; i >= 0; i-- {
+			jumpClients[i].Close()
+		}
+	}
+
 	for _, j := range p.JumpHosts {
 		jConf := &ssh.ClientConfig{
 			User:            j.User,
@@ -168,21 +164,36 @@ func connectViaJump(password string, p config.Profile, addr string, sshConf *ssh
 				jConf.Auth = append(jConf.Auth, key)
 			}
 		}
+		jumpPassword := j.Password
+		if jumpPassword == "" {
+			jumpPassword = password
+		}
+		if jumpPassword != "" {
+			jConf.Auth = append(jConf.Auth, passwordAuthMethods(jumpPassword)...)
+		}
 
 		jAddr := fmt.Sprintf("%s:%d", j.Host, j.Port)
-		netConn, err := net.DialTimeout("tcp", jAddr, 10*time.Second)
+		var netConn net.Conn
+		var err error
+		if len(jumpClients) == 0 {
+			netConn, err = net.DialTimeout("tcp", jAddr, 10*time.Second)
+		} else {
+			netConn, err = jumpClients[len(jumpClients)-1].Dial("tcp", jAddr)
+		}
 		if err != nil {
+			closeJumpClients()
 			return nil, fmt.Errorf("jump host connect %s (%s@%s:%d): %w", j.Name, j.User, j.Host, j.Port, err)
 		}
 		c, chans, reqs, err := ssh.NewClientConn(netConn, jAddr, jConf)
 		if err != nil {
 			netConn.Close()
+			closeJumpClients()
 			return nil, fmt.Errorf("jump host handshake %s (%s@%s:%d): %w", j.Name, j.User, j.Host, j.Port, err)
 		}
-		last = ssh.NewClient(c, chans, reqs)
+		jumpClients = append(jumpClients, ssh.NewClient(c, chans, reqs))
 	}
 
-	if last == nil {
+	if len(jumpClients) == 0 {
 		netConn, err := net.DialTimeout("tcp", addr, 10*time.Second)
 		if err != nil {
 			return nil, fmt.Errorf("target connect %s: %w", addr, err)
@@ -195,16 +206,36 @@ func connectViaJump(password string, p config.Profile, addr string, sshConf *ssh
 		return ssh.NewClient(c, chans, reqs), nil
 	}
 
-	netConn, err := net.DialTimeout("tcp", addr, 10*time.Second)
+	netConn, err := jumpClients[len(jumpClients)-1].Dial("tcp", addr)
 	if err != nil {
+		closeJumpClients()
 		return nil, fmt.Errorf("target connect through bastion %s: %w", addr, err)
 	}
 	c, chans, reqs, err := ssh.NewClientConn(netConn, addr, sshConf)
 	if err != nil {
 		netConn.Close()
+		closeJumpClients()
 		return nil, err
 	}
-	return ssh.NewClient(c, chans, reqs), nil
+	target := ssh.NewClient(c, chans, reqs)
+	go func() {
+		target.Wait()
+		closeJumpClients()
+	}()
+	return target, nil
+}
+
+func passwordAuthMethods(password string) []ssh.AuthMethod {
+	return []ssh.AuthMethod{
+		ssh.Password(password),
+		ssh.KeyboardInteractive(func(user, instruction string, questions []string, echos []bool) (answers []string, err error) {
+			answers = make([]string, len(questions))
+			for i := range questions {
+				answers[i] = password
+			}
+			return answers, nil
+		}),
+	}
 }
 
 func loadKey(path string) (ssh.AuthMethod, error) {

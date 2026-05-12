@@ -39,6 +39,8 @@ func runConnect(name string) error {
 	if p == nil {
 		return fmt.Errorf("profile %q not found", name)
 	}
+	profile := cfg.ResolveJumpHosts(*p)
+	profile = withStoredJumpPasswords(profile, getCredentialPassword)
 	histPath, _ := config.DefaultHistoryPath()
 	h := history.NewTracker(histPath)
 	h.Record(name)
@@ -46,15 +48,19 @@ func runConnect(name string) error {
 		fmt.Fprintf(os.Stderr, "Warning: failed to save history: %v\n", err)
 	}
 
-	if !executor.HasIdentityKey(*p) {
+	if !executor.HasIdentityKey(profile) {
+		profile, err = promptMissingJumpPasswords(profile)
+		if err != nil {
+			return err
+		}
 		password, err := credential.Get(credential.KindPassword, name)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: credential lookup failed: %v\n", err)
 		}
 		if password != "" {
-			return executor.ExecWithPassword(password, *p)
+			return executor.ExecWithPassword(password, profile)
 		}
-		fmt.Printf("Password for %s (%s@%s): ", name, p.User, p.Host)
+		fmt.Printf("Password for %s (%s@%s): ", name, profile.User, profile.Host)
 		pwd, err := readPassword()
 		if err != nil {
 			return err
@@ -68,10 +74,71 @@ func runConnect(name string) error {
 					fmt.Fprintf(os.Stderr, "Warning: failed to save password: %v\n", err)
 				}
 			}
-			return executor.ExecWithPassword(string(pwd), *p)
+			return executor.ExecWithPassword(string(pwd), profile)
 		}
 	}
-	return executor.ExecSSH(*p)
+	return executor.ExecSSH(profile)
+}
+
+func promptMissingJumpPasswords(p config.Profile) (config.Profile, error) {
+	return withPromptedJumpPasswords(p, func(jump config.JumpHost) (string, error) {
+		displayName := jump.Name
+		if displayName == "" {
+			displayName = jump.Host
+		}
+		fmt.Printf("Password for jump %s (%s@%s): ", displayName, jump.User, jump.Host)
+		pwd, err := readPassword()
+		if err != nil {
+			return "", err
+		}
+		if len(pwd) == 0 {
+			return "", fmt.Errorf("password is required for jump host %s", displayName)
+		}
+		if jump.Name != "" {
+			fmt.Printf("Save password to keychain for jump %s? [y/N]: ", displayName)
+			var ans string
+			fmt.Scanln(&ans)
+			if ans == "y" || ans == "Y" {
+				if err := credential.Set(credential.KindPassword, jump.Name, string(pwd)); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to save jump password: %v\n", err)
+				}
+			}
+		}
+		return string(pwd), nil
+	})
+}
+
+func withPromptedJumpPasswords(p config.Profile, prompt func(config.JumpHost) (string, error)) (config.Profile, error) {
+	for i := range p.JumpHosts {
+		jump := &p.JumpHosts[i]
+		if jump.Password != "" || jump.IdentityFile != "" {
+			continue
+		}
+		password, err := prompt(*jump)
+		if err != nil {
+			return p, err
+		}
+		jump.Password = password
+	}
+	return p, nil
+}
+
+func withStoredJumpPasswords(p config.Profile, lookup func(string) (string, error)) config.Profile {
+	for i := range p.JumpHosts {
+		jump := &p.JumpHosts[i]
+		if jump.Password != "" || jump.Name == "" {
+			continue
+		}
+		password, err := lookup(jump.Name)
+		if err == nil && password != "" {
+			jump.Password = password
+		}
+	}
+	return p
+}
+
+func getCredentialPassword(name string) (string, error) {
+	return credential.Get(credential.KindPassword, name)
 }
 
 func runConnectRecent() error {

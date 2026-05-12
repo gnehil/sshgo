@@ -69,3 +69,70 @@ func TestBackup_BeforeSave(t *testing.T) {
 		t.Error("expected backup file to exist")
 	}
 }
+
+func TestResolveJumpHostsUsesReferencedProfile(t *testing.T) {
+	cfg := &Config{
+		Profiles: []Profile{
+			{Name: "dev-jumper-hk", Host: "8.212.50.246", Port: 22, User: "liheng", IdentityFile: "~/.ssh/dev"},
+		},
+	}
+	p := Profile{
+		Name: "dev-byteplus-hk",
+		Host: "10.26.20.3",
+		Port: 22,
+		User: "liheng",
+		JumpHosts: []JumpHost{{
+			Name: "root@dev-jumper-hk",
+			Host: "dev-jumper-hk",
+			Port: 22,
+			User: "root",
+		}},
+	}
+
+	resolved := cfg.ResolveJumpHosts(p)
+
+	if len(resolved.JumpHosts) != 1 {
+		t.Fatalf("expected one jump host, got %d", len(resolved.JumpHosts))
+	}
+	jump := resolved.JumpHosts[0]
+	if jump.Host != "8.212.50.246" {
+		t.Fatalf("expected jump host address from referenced profile, got %q", jump.Host)
+	}
+	if jump.User != "liheng" {
+		t.Fatalf("expected jump user from referenced profile, got %q", jump.User)
+	}
+	if jump.IdentityFile != "~/.ssh/dev" {
+		t.Fatalf("expected identity file from referenced profile, got %q", jump.IdentityFile)
+	}
+}
+
+func TestSaveConfigOmitsRuntimeJumpPassword(t *testing.T) {
+	dir := setupTestDir(t)
+	cfgPath := filepath.Join(dir, "config.yaml")
+	cfg := &Config{
+		Profiles: []Profile{{
+			Name: "dev-byteplus-hk",
+			Host: "10.26.20.3",
+			Port: 22,
+			User: "liheng",
+			JumpHosts: []JumpHost{{
+				Name:     "dev-jumper-hk",
+				Host:     "8.212.50.246",
+				Port:     22,
+				User:     "liheng",
+				Password: "jump-secret",
+			}},
+		}},
+	}
+
+	if err := SaveConfig(cfgPath, cfg); err != nil {
+		t.Fatalf("SaveConfig() error: %v", err)
+	}
+	data, err := os.ReadFile(cfgPath)
+	if err != nil {
+		t.Fatalf("ReadFile() error: %v", err)
+	}
+	if strings.Contains(string(data), "jump-secret") {
+		t.Fatalf("runtime jump password was written to config:\n%s", data)
+	}
+}

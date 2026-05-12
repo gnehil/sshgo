@@ -13,16 +13,16 @@ type Config struct {
 }
 
 type Profile struct {
-	Name              string       `yaml:"name"`
-	Host              string       `yaml:"host"`
-	Port              int          `yaml:"port"`
-	User              string       `yaml:"user"`
-	Group             string       `yaml:"group,omitempty"`
-	IdentityFile      string       `yaml:"identity_file,omitempty"`
-	JumpHosts         []JumpHost   `yaml:"jump_hosts,omitempty"`
+	Name              string        `yaml:"name"`
+	Host              string        `yaml:"host"`
+	Port              int           `yaml:"port"`
+	User              string        `yaml:"user"`
+	Group             string        `yaml:"group,omitempty"`
+	IdentityFile      string        `yaml:"identity_file,omitempty"`
+	JumpHosts         []JumpHost    `yaml:"jump_hosts,omitempty"`
 	ForwardPorts      []ForwardPort `yaml:"forward_ports,omitempty"`
-	KeepaliveInterval int          `yaml:"keepalive_interval,omitempty"`
-	ServerAliveCount  int          `yaml:"server_alive_count,omitempty"`
+	KeepaliveInterval int           `yaml:"keepalive_interval,omitempty"`
+	ServerAliveCount  int           `yaml:"server_alive_count,omitempty"`
 }
 
 type JumpHost struct {
@@ -31,6 +31,7 @@ type JumpHost struct {
 	Port         int    `yaml:"port"`
 	User         string `yaml:"user"`
 	IdentityFile string `yaml:"identity_file,omitempty"`
+	Password     string `yaml:"-"`
 }
 
 type ForwardPort struct {

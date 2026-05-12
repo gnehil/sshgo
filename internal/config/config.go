@@ -2,11 +2,11 @@ package config
 
 import (
 	"fmt"
+	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
-	"gopkg.in/yaml.v3"
 )
 
 func DefaultConfigDir() (string, error) {
@@ -113,6 +113,31 @@ func (c *Config) FindProfile(name string) *Profile {
 		}
 	}
 	return nil
+}
+
+func (c *Config) ResolveJumpHosts(p Profile) Profile {
+	for i, jump := range p.JumpHosts {
+		ref := c.FindProfile(jump.Host)
+		if ref == nil {
+			continue
+		}
+
+		resolved := jump
+		resolved.Host = ref.Host
+		resolved.User = ref.User
+		resolved.Port = ref.Port
+		if resolved.Port == 0 {
+			resolved.Port = 22
+		}
+		if resolved.IdentityFile == "" {
+			resolved.IdentityFile = ref.IdentityFile
+		}
+		if resolved.Name == "" || resolved.Name == jump.User+"@"+jump.Host {
+			resolved.Name = ref.Name
+		}
+		p.JumpHosts[i] = resolved
+	}
+	return p
 }
 
 func (c *Config) AddProfile(p Profile) {
