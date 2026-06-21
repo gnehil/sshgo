@@ -126,7 +126,7 @@ sshgo group delete prod
 
 ### `sshgo add-jump <name>`
 
-Add jump host(s) to a connection (supports multi-hop chains).
+Add jump host(s) to a connection (supports multi-hop chains). **Replaces any existing jump chain** — to inspect or modify a chain, use `sshgo show <name>` and `sshgo edit`.
 
 | Flag | Description |
 |------|-------------|
@@ -281,6 +281,22 @@ View connection history.
 
 ```bash
 sshgo history
+```
+
+### `sshgo doctor`
+
+Audit every profile (and its jump hosts) for problems: missing identity files, identity files with group/other access, and any other issues surfaced by `Profile.Validate`. Exits with a non-zero status if any issue is found.
+
+Useful after manually editing `~/.sshgo/config.yaml`, importing a foreign SSH config, or after `chmod` changes outside of sshgo's awareness.
+
+```bash
+sshgo doctor
+# [OK] All profiles healthy.
+
+# Example with a leaky key:
+sshgo doctor
+# Found 1 issue(s):
+#   - my-server: identity file /home/me/.ssh/leaky has insecure permissions (0644); run: chmod 600 /home/me/.ssh/leaky
 ```
 
 ### `sshgo completion [bash|zsh|fish]`

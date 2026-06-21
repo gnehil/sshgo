@@ -29,6 +29,10 @@ sshgo add web-prod --host 10.0.0.1 --user deploy -p 2222 --group prod
 sshgo add db-prod --host 10.0.0.2 --user dbadmin \
   --identity-file ~/.ssh/id_rsa_prod --group prod
 
+# Note: sshgo requires the identity file to be readable only by you
+# (e.g. mode 0o600). Files with group/other access are rejected to match
+# OpenSSH's policy and avoid "Permissions 0644 ... are too open" later.
+
 # Configure keepalive
 sshgo add db-prod --host 10.0.0.2 --user dbadmin --group prod
 # Keepalive parameters can be added later via editing config.yaml:

@@ -126,7 +126,7 @@ sshgo group delete prod
 
 ### `sshgo add-jump <name>`
 
-为指定连接添加跳板机（支持多层跳板链）。
+为指定连接添加跳板机（支持多层跳板链）。**会替换已有的跳板机链**——如需查看或修改现有链，请使用 `sshgo show <name>` 与 `sshgo edit`。
 
 | 参数 | 说明 |
 |------|------|
@@ -281,6 +281,22 @@ sshgo ping web-server
 
 ```bash
 sshgo history
+```
+
+### `sshgo doctor`
+
+检查所有 profile（包括跳板机）的问题：缺失的密钥文件、权限过宽的密钥文件、以及其他 `Profile.Validate` 能发现的问题。如发现问题则以非零状态退出。
+
+适用于手改 `~/.sshgo/config.yaml` 之后、导入外部 SSH config 之后、或 sshgo 感知之外的 `chmod` 变更之后。
+
+```bash
+sshgo doctor
+# [OK] All profiles healthy.
+
+# 有问题时的示例：
+sshgo doctor
+# Found 1 issue(s):
+#   - my-server: identity file /home/me/.ssh/leaky has insecure permissions (0644); run: chmod 600 /home/me/.ssh/leaky
 ```
 
 ### `sshgo completion [bash|zsh|fish]`

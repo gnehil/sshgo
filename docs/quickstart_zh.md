@@ -29,6 +29,10 @@ sshgo add web-prod --host 10.0.0.1 --user deploy -p 2222 --group prod
 sshgo add db-prod --host 10.0.0.2 --user dbadmin \
   --identity-file ~/.ssh/id_rsa_prod --group prod
 
+# 注意：sshgo 要求密钥文件仅本人可读（如 0o600），
+# 与 OpenSSH 策略一致。权限过宽（如 0o644）会在 add 时被拒绝，
+# 避免后续连接时出现 "Permissions 0644 ... are too open" 错误。
+
 # 配置心跳
 sshgo add db-prod --host 10.0.0.2 --user dbadmin --group prod
 # 心跳参数后续通过编辑 config.yaml 添加：

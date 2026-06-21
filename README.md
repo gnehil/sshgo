@@ -75,13 +75,14 @@ sshgo delete web-server
 | `sshgo connect <name>` | Connect to a server |
 | `sshgo connect --recent` | Choose from connection history |
 | `sshgo group list/add/delete` | Manage groups |
-| `sshgo add-jump <name>` | Configure jump hosts |
+| `sshgo add-jump <name>` | Configure jump hosts (replaces any existing jump chain) |
 | `sshgo forward add/list` | Manage port forwarding |
 | `sshgo exec <pattern>` | Batch command execution |
 | `sshgo import` | Import from SSH config |
 | `sshgo sync` | Sync to SSH config |
 | `sshgo ping <name>` | Test connectivity |
 | `sshgo history` | View connection history |
+| `sshgo doctor` | Audit profiles for missing or insecure identity files |
 | `sshgo completion` | Generate shell completions |
 
 ## Configuration
