@@ -8,10 +8,11 @@ import (
 )
 
 var (
-	addHost  string
-	addPort  int
-	addUser  string
-	addGroup string
+	addHost         string
+	addPort         int
+	addUser         string
+	addGroup        string
+	addIdentityFile string
 )
 
 var addCmd = &cobra.Command{
@@ -28,10 +29,10 @@ func runAdd(name string) error {
 	if err != nil {
 		return err
 	}
-	return runAddWithConfig(cfgPath, name, addHost, addPort, addUser, addGroup)
+	return runAddWithConfig(cfgPath, name, addHost, addPort, addUser, addGroup, addIdentityFile)
 }
 
-func runAddWithConfig(cfgPath, name, host string, port int, user, group string) error {
+func runAddWithConfig(cfgPath, name, host string, port int, user, group, identityFile string) error {
 	cfg, err := config.LoadConfig(cfgPath)
 	if err != nil {
 		return err
@@ -40,11 +41,12 @@ func runAddWithConfig(cfgPath, name, host string, port int, user, group string) 
 		return fmt.Errorf("profile %q already exists", name)
 	}
 	p := config.Profile{
-		Name:  name,
-		Host:  host,
-		Port:  port,
-		User:  user,
-		Group: group,
+		Name:         name,
+		Host:         host,
+		Port:         port,
+		User:         user,
+		Group:        group,
+		IdentityFile: identityFile,
 	}
 	if err := p.Validate(cfg); err != nil {
 		return fmt.Errorf("validation failed: %w", err)
@@ -62,6 +64,7 @@ func init() {
 	addCmd.Flags().IntVarP(&addPort, "port", "p", 22, "SSH port")
 	addCmd.Flags().StringVarP(&addUser, "user", "u", "", "SSH user (required)")
 	addCmd.Flags().StringVar(&addGroup, "group", "", "Group name")
+	addCmd.Flags().StringVarP(&addIdentityFile, "identity-file", "i", "", "Path to identity (private key) file")
 	addCmd.MarkFlagRequired("host")
 	addCmd.MarkFlagRequired("user")
 	rootCmd.AddCommand(addCmd)

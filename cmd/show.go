@@ -38,6 +38,9 @@ func runShow(name string) error {
 		fmt.Printf("Jump Hosts:\n")
 		for _, j := range p.JumpHosts {
 			fmt.Printf("  - %s@%s:%d\n", j.User, j.Host, j.Port)
+			if j.IdentityFile != "" {
+				fmt.Printf("    Identity: %s\n", j.IdentityFile)
+			}
 		}
 	}
 	if len(p.ForwardPorts) > 0 {

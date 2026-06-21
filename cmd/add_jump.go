@@ -2,13 +2,18 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
+
 	"github.com/spf13/cobra"
 	"github.com/sshgo/sshgo/internal/config"
 )
 
-var jumpHosts []string
+var (
+	jumpHosts         []string
+	jumpIdentityFiles []string
+)
 
 var addJumpCmd = &cobra.Command{
 	Use:   "add-jump <name>",
@@ -24,20 +29,48 @@ func runAddJump(name string) error {
 	if err != nil {
 		return err
 	}
-	p := cfg.FindProfile(name)
-	if p == nil {
-		return fmt.Errorf("profile %q not found", name)
-	}
-	var jumps []config.JumpHost
-	for _, j := range jumpHosts {
-		jumps = append(jumps, parseJumpHostArg(j))
+	jumps, err := buildJumpHosts(jumpHosts, jumpIdentityFiles)
+	if err != nil {
+		return err
 	}
 	if len(jumps) == 0 {
 		return fmt.Errorf("use --jump to specify jump host")
 	}
-	p.JumpHosts = jumps
+	if err := applyJumpHosts(cfg, name, jumps); err != nil {
+		return err
+	}
 	cfgPath, _ := config.DefaultConfigPath()
 	return config.SaveConfig(cfgPath, cfg)
+}
+
+func applyJumpHosts(cfg *config.Config, name string, jumps []config.JumpHost) error {
+	p := cfg.FindProfile(name)
+	if p == nil {
+		return fmt.Errorf("profile %q not found", name)
+	}
+	p.JumpHosts = jumps
+	return nil
+}
+
+func buildJumpHosts(addrs, identityFiles []string) ([]config.JumpHost, error) {
+	if len(identityFiles) > len(addrs) {
+		return nil, fmt.Errorf("--identity-file count (%d) exceeds --jump count (%d)", len(identityFiles), len(addrs))
+	}
+	jumps := make([]config.JumpHost, 0, len(addrs))
+	for i, addr := range addrs {
+		jh := parseJumpHostArg(addr)
+		if i < len(identityFiles) {
+			path := identityFiles[i]
+			if path != "" {
+				if _, err := os.Stat(path); err != nil {
+					return nil, fmt.Errorf("jump[%d] identity file: %w", i, err)
+				}
+				jh.IdentityFile = path
+			}
+		}
+		jumps = append(jumps, jh)
+	}
+	return jumps, nil
 }
 
 func parseJumpHostArg(arg string) config.JumpHost {
@@ -66,5 +99,6 @@ func parseJumpHostArg(arg string) config.JumpHost {
 
 func init() {
 	addJumpCmd.Flags().StringArrayVar(&jumpHosts, "jump", nil, "Jump host (can be repeated for chain)")
+	addJumpCmd.Flags().StringArrayVarP(&jumpIdentityFiles, "identity-file", "i", nil, "Identity file for the Nth --jump (position-matched, repeatable)")
 	rootCmd.AddCommand(addJumpCmd)
 }
