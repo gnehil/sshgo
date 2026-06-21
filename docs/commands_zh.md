@@ -13,9 +13,13 @@
 | `--port`, `-p` | SSH 端口（默认 22） | 否 |
 | `--user`, `-u` | SSH 用户名 | 是 |
 | `--group` | 所属分组名称 | 否 |
+| `--identity-file`, `-i` | 私钥文件路径 | 否 |
 
 ```bash
 sshgo add my-server --host 192.168.1.10 --user deploy -p 2222 --group prod
+
+# 使用密钥认证
+sshgo add prod --host 10.0.0.1 --user deploy -i ~/.ssh/id_ed25519_prod
 ```
 
 ### `sshgo show <name>`
@@ -128,6 +132,7 @@ sshgo group delete prod
 |------|------|
 | `<name>` | 目标连接别名 |
 | `--jump` | 跳板机地址（可重复使用） |
+| `--identity-file` | 第 N 个 `--jump` 对应的私钥文件（按位置配对，可重复） |
 
 跳板机地址格式：`[user@]host[:port]`，user 默认为 root。
 
@@ -140,6 +145,11 @@ sshgo add-jump db-server --jump bastion --jump gateway
 
 # 带用户和端口
 sshgo add-jump db-server --jump deploy@bastion:2222
+
+# 为每一层跳板机指定独立密钥（按位置与 --jump 配对）
+sshgo add-jump db-server \
+  --jump admin@bastion1:22 -i ~/.ssh/id_bastion1 \
+  --jump ops@bastion2:22   -i ~/.ssh/id_bastion2
 ```
 
 ---

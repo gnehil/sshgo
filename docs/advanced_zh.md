@@ -78,13 +78,18 @@ profiles:
 典型的企业网络架构（外层 → 内层跳板 → 目标）：
 
 ```bash
-# 方式一：CLI 添加
+# Method 1: CLI addition
 sshgo add-jump internal-db \
   --jump deploy@bastion.company.com:2222 \
   --jump ops@gateway:22
 
-# 方式二：直接编辑 YAML
-# 详见 docs/config.md 中的 JumpHost 章节
+# 为每一层跳板机指定独立密钥
+sshgo add-jump internal-db \
+  --jump deploy@bastion.company.com:2222 -i ~/.ssh/id_bastion \
+  --jump ops@gateway:22               -i ~/.ssh/id_gateway
+
+# Method 2: Direct YAML editing
+# See JumpHost section in docs/config.md
 ```
 
 ### 跳板机与端口转发结合

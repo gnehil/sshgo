@@ -13,9 +13,13 @@ Add a new SSH connection profile.
 | `--port`, `-p` | SSH port (default: 22) | No |
 | `--user`, `-u` | SSH username | Yes |
 | `--group` | Group name | No |
+| `--identity-file`, `-i` | Path to identity (private key) file | No |
 
 ```bash
 sshgo add my-server --host 192.168.1.10 --user deploy -p 2222 --group prod
+
+# With key-based authentication
+sshgo add prod --host 10.0.0.1 --user deploy -i ~/.ssh/id_ed25519_prod
 ```
 
 ### `sshgo show <name>`
@@ -128,6 +132,7 @@ Add jump host(s) to a connection (supports multi-hop chains).
 |------|-------------|
 | `<name>` | Target connection alias |
 | `--jump` | Jump host address (can be used multiple times) |
+| `--identity-file` | Identity file for the Nth `--jump` (position-matched, repeatable) |
 
 Jump host address format: `[user@]host[:port]`, user defaults to root.
 
@@ -140,6 +145,11 @@ sshgo add-jump db-server --jump bastion --jump gateway
 
 # With user and port
 sshgo add-jump db-server --jump deploy@bastion:2222
+
+# With per-hop identity files (position-matched to --jump)
+sshgo add-jump db-server \
+  --jump admin@bastion1:22 -i ~/.ssh/id_bastion1 \
+  --jump ops@bastion2:22   -i ~/.ssh/id_bastion2
 ```
 
 ---

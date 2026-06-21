@@ -83,6 +83,11 @@ sshgo add-jump internal-db \
   --jump deploy@bastion.company.com:2222 \
   --jump ops@gateway:22
 
+# With per-hop identity files
+sshgo add-jump internal-db \
+  --jump deploy@bastion.company.com:2222 -i ~/.ssh/id_bastion \
+  --jump ops@gateway:22               -i ~/.ssh/id_gateway
+
 # Method 2: Direct YAML editing
 # See JumpHost section in docs/config.md
 ```
