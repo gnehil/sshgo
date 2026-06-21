@@ -76,9 +76,8 @@ func (p *Profile) Validate(cfg *Config) error {
 		}
 	}
 	if p.IdentityFile != "" {
-		expanded := ExpandTilde(p.IdentityFile)
-		if _, err := os.Stat(expanded); os.IsNotExist(err) {
-			return fmt.Errorf("identity file not found: %s", expanded)
+		if err := ValidateIdentityFile(ExpandTilde(p.IdentityFile)); err != nil {
+			return err
 		}
 	}
 	for i, j := range p.JumpHosts {
@@ -113,4 +112,28 @@ func ExpandTilde(path string) string {
 		return filepath.Join(home, path[1:])
 	}
 	return path
+}
+
+// ValidateIdentityFile checks that path points to a readable file whose
+// permissions OpenSSH will accept. An empty path is a no-op.
+//
+// The mask 0o037 mirrors OpenSSH's secure_filename() check for user-owned
+// keys (the common case when sshgo is invoked as the same user who owns
+// the key): any of S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH is
+// rejected. Group-read-only (e.g. 0o640) is accepted, matching OpenSSH's
+// actual behavior, so we surface the same failure at profile creation
+// time rather than as a cryptic "Permissions 0644 ... are too open" at
+// connect time.
+func ValidateIdentityFile(path string) error {
+	if path == "" {
+		return nil
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return fmt.Errorf("identity file %s: %w", path, err)
+	}
+	if mode := info.Mode().Perm(); mode&0o037 != 0 {
+		return fmt.Errorf("identity file %s has insecure permissions (%#o); run: chmod 600 %s", path, mode, path)
+	}
+	return nil
 }

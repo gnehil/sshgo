@@ -3,6 +3,7 @@ package cmd
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/sshgo/sshgo/internal/config"
@@ -97,5 +98,24 @@ func TestRunAddJump_InvalidIdentityFile(t *testing.T) {
 	)
 	if err == nil {
 		t.Fatal("expected error for nonexistent identity file")
+	}
+}
+
+func TestRunAddJump_InsecureIdentityFile(t *testing.T) {
+	dir := t.TempDir()
+	key := filepath.Join(dir, "leaky")
+	if err := os.WriteFile(key, []byte("k"), 0o644); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+
+	_, err := buildJumpHosts(
+		[]string{"a@b1"},
+		[]string{key},
+	)
+	if err == nil {
+		t.Fatal("expected error for jump host identity with 0o644 perms")
+	}
+	if !strings.Contains(err.Error(), "chmod 600") {
+		t.Errorf("error should mention chmod 600, got: %v", err)
 	}
 }

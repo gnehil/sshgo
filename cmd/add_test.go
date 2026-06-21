@@ -3,6 +3,7 @@ package cmd
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/sshgo/sshgo/internal/config"
@@ -82,5 +83,30 @@ func TestRunAdd_InvalidIdentityFile(t *testing.T) {
 	cfg, _ := config.LoadConfig(cfgPath)
 	if cfg.FindProfile("bad-key") != nil {
 		t.Fatal("profile should not be saved when identity file is invalid")
+	}
+}
+
+func TestRunAdd_InsecureIdentityFile(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.yaml")
+	keyPath := filepath.Join(dir, "leaky_key")
+	if err := os.WriteFile(keyPath, []byte("k"), 0o644); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	if err := config.SaveConfig(cfgPath, &config.Config{}); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+
+	err := runAddWithConfig(cfgPath, "leaky", "10.0.0.3", 22, "deploy", "", keyPath)
+	if err == nil {
+		t.Fatal("expected error for identity file with insecure permissions (0o644)")
+	}
+	if !strings.Contains(err.Error(), "chmod 600") {
+		t.Errorf("error should mention chmod 600, got: %v", err)
+	}
+
+	cfg, _ := config.LoadConfig(cfgPath)
+	if cfg.FindProfile("leaky") != nil {
+		t.Fatal("profile should not be saved when identity file has bad perms")
 	}
 }

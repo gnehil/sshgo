@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -66,5 +67,55 @@ func TestExpandTilde(t *testing.T) {
 	want := filepath.Join(home, ".ssh/id_rsa")
 	if got != want {
 		t.Errorf("ExpandTilde() = %v, want %v", got, want)
+	}
+}
+
+func TestValidateIdentityFile_SecurePerms(t *testing.T) {
+	dir := t.TempDir()
+	tests := []os.FileMode{0o600, 0o400, 0o640}
+	for _, mode := range tests {
+		t.Run(mode.String(), func(t *testing.T) {
+			path := filepath.Join(dir, "key_"+mode.String())
+			if err := os.WriteFile(path, []byte("k"), mode); err != nil {
+				t.Fatalf("setup: %v", err)
+			}
+			if err := ValidateIdentityFile(path); err != nil {
+				t.Errorf("ValidateIdentityFile(%o) error = %v, want nil", mode, err)
+			}
+		})
+	}
+}
+
+func TestValidateIdentityFile_InsecurePerms(t *testing.T) {
+	dir := t.TempDir()
+	tests := []os.FileMode{0o644, 0o666, 0o755, 0o777, 0o604, 0o605}
+	for _, mode := range tests {
+		t.Run(mode.String(), func(t *testing.T) {
+			path := filepath.Join(dir, "key_"+mode.String())
+			if err := os.WriteFile(path, []byte("k"), mode); err != nil {
+				t.Fatalf("setup: %v", err)
+			}
+			err := ValidateIdentityFile(path)
+			if err == nil {
+				t.Errorf("ValidateIdentityFile(%o) error = nil, want error", mode)
+				return
+			}
+			if !strings.Contains(err.Error(), "chmod 600") {
+				t.Errorf("error message should mention chmod 600, got: %v", err)
+			}
+		})
+	}
+}
+
+func TestValidateIdentityFile_NotFound(t *testing.T) {
+	err := ValidateIdentityFile("/nonexistent/path/id_rsa")
+	if err == nil {
+		t.Fatal("expected error for nonexistent file")
+	}
+}
+
+func TestValidateIdentityFile_Empty(t *testing.T) {
+	if err := ValidateIdentityFile(""); err != nil {
+		t.Errorf("empty path should be a no-op, got: %v", err)
 	}
 }

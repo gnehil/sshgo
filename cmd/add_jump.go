@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
@@ -62,8 +61,8 @@ func buildJumpHosts(addrs, identityFiles []string) ([]config.JumpHost, error) {
 		if i < len(identityFiles) {
 			path := identityFiles[i]
 			if path != "" {
-				if _, err := os.Stat(path); err != nil {
-					return nil, fmt.Errorf("jump[%d] identity file: %w", i, err)
+				if err := config.ValidateIdentityFile(path); err != nil {
+					return nil, fmt.Errorf("jump[%d] %w", i, err)
 				}
 				jh.IdentityFile = path
 			}
