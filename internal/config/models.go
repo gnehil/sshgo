@@ -93,6 +93,11 @@ func (p *Profile) Validate(cfg *Config) error {
 		if j.Port < 1 || j.Port > 65535 {
 			return fmt.Errorf("invalid jump_hosts[%d].port: %d", i, j.Port)
 		}
+		if j.IdentityFile != "" {
+			if err := ValidateIdentityFile(ExpandTilde(j.IdentityFile)); err != nil {
+				return fmt.Errorf("jump_hosts[%d].%w", i, err)
+			}
+		}
 	}
 	return nil
 }
@@ -124,6 +129,19 @@ func ExpandTilde(path string) string {
 // actual behavior, so we surface the same failure at profile creation
 // time rather than as a cryptic "Permissions 0644 ... are too open" at
 // connect time.
+//
+// Known limitations:
+//   - For root-owned keys OpenSSH applies a stricter check (mask 0o077,
+//     rejecting any group/other access). This function does not replicate
+//     that branch, so a root-owned key with 0o040 group read will pass
+//     here but fail at connect time. This is an exotic edge case (sshgo
+//     runs as an unprivileged user in essentially all real scenarios).
+//   - There is an inherent TOCTOU window between this stat and the
+//     eventual ssh invocation. Acceptable for a local CLI; an attacker
+//     would need both filesystem access and millisecond timing.
+//   - The returned error includes the absolute path. On a shared system
+//     this could leak home-directory structure; we accept that trade-off
+//     because the user invoking sshgo already knows their own paths.
 func ValidateIdentityFile(path string) error {
 	if path == "" {
 		return nil

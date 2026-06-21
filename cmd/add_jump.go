@@ -28,6 +28,9 @@ func runAddJump(name string) error {
 	if err != nil {
 		return err
 	}
+	if cfg.FindProfile(name) == nil {
+		return fmt.Errorf("profile %q not found", name)
+	}
 	jumps, err := buildJumpHosts(jumpHosts, jumpIdentityFiles)
 	if err != nil {
 		return err
@@ -35,20 +38,17 @@ func runAddJump(name string) error {
 	if len(jumps) == 0 {
 		return fmt.Errorf("use --jump to specify jump host")
 	}
-	if err := applyJumpHosts(cfg, name, jumps); err != nil {
-		return err
-	}
+	applyJumpHosts(cfg, name, jumps)
 	cfgPath, _ := config.DefaultConfigPath()
 	return config.SaveConfig(cfgPath, cfg)
 }
 
-func applyJumpHosts(cfg *config.Config, name string, jumps []config.JumpHost) error {
+func applyJumpHosts(cfg *config.Config, name string, jumps []config.JumpHost) {
 	p := cfg.FindProfile(name)
 	if p == nil {
-		return fmt.Errorf("profile %q not found", name)
+		return
 	}
 	p.JumpHosts = jumps
-	return nil
 }
 
 func buildJumpHosts(addrs, identityFiles []string) ([]config.JumpHost, error) {
@@ -57,12 +57,15 @@ func buildJumpHosts(addrs, identityFiles []string) ([]config.JumpHost, error) {
 	}
 	jumps := make([]config.JumpHost, 0, len(addrs))
 	for i, addr := range addrs {
-		jh := parseJumpHostArg(addr)
+		jh, err := parseJumpHostArg(addr)
+		if err != nil {
+			return nil, fmt.Errorf("jump[%d]: %w", i, err)
+		}
 		if i < len(identityFiles) {
 			path := identityFiles[i]
 			if path != "" {
 				if err := config.ValidateIdentityFile(path); err != nil {
-					return nil, fmt.Errorf("jump[%d] %w", i, err)
+					return nil, fmt.Errorf("jump[%d]: %w", i, err)
 				}
 				jh.IdentityFile = path
 			}
@@ -72,7 +75,7 @@ func buildJumpHosts(addrs, identityFiles []string) ([]config.JumpHost, error) {
 	return jumps, nil
 }
 
-func parseJumpHostArg(arg string) config.JumpHost {
+func parseJumpHostArg(arg string) (config.JumpHost, error) {
 	jh := config.JumpHost{Port: 22}
 	parts := strings.Split(arg, "@")
 	if len(parts) == 2 {
@@ -81,10 +84,14 @@ func parseJumpHostArg(arg string) config.JumpHost {
 	}
 	colonIdx := strings.LastIndex(arg, ":")
 	if colonIdx > 0 {
-		p, _ := strconv.Atoi(arg[colonIdx+1:])
-		if p > 0 {
-			jh.Port = p
+		port, err := strconv.Atoi(arg[colonIdx+1:])
+		if err != nil {
+			return jh, fmt.Errorf("invalid port %q in %q: must be a number", arg[colonIdx+1:], arg)
 		}
+		if port < 1 || port > 65535 {
+			return jh, fmt.Errorf("invalid port %d in %q: must be 1-65535", port, arg)
+		}
+		jh.Port = port
 		jh.Host = arg[:colonIdx]
 	} else {
 		jh.Host = arg
@@ -93,7 +100,7 @@ func parseJumpHostArg(arg string) config.JumpHost {
 		jh.User = "root"
 	}
 	jh.Name = jh.User + "@" + jh.Host
-	return jh
+	return jh, nil
 }
 
 func init() {

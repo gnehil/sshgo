@@ -119,3 +119,55 @@ func TestValidateIdentityFile_Empty(t *testing.T) {
 		t.Errorf("empty path should be a no-op, got: %v", err)
 	}
 }
+
+func TestProfileValidate_InsecureJumpHostIdentity(t *testing.T) {
+	dir := t.TempDir()
+	key := filepath.Join(dir, "leaky_jump_key")
+	if err := os.WriteFile(key, []byte("k"), 0o644); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	p := &Profile{
+		Name: "test",
+		Host: "10.0.0.1",
+		Port: 22,
+		User: "u",
+		JumpHosts: []JumpHost{{
+			Name:         "bastion",
+			Host:         "b1",
+			Port:         22,
+			User:         "u",
+			IdentityFile: key,
+		}},
+	}
+	err := p.Validate(&Config{})
+	if err == nil {
+		t.Fatal("expected error for jump host identity with insecure perms")
+	}
+	if !strings.Contains(err.Error(), "jump_hosts[0]") {
+		t.Errorf("error should reference jump_hosts[0], got: %v", err)
+	}
+}
+
+func TestProfileValidate_SecureJumpHostIdentity(t *testing.T) {
+	dir := t.TempDir()
+	key := filepath.Join(dir, "ok_jump_key")
+	if err := os.WriteFile(key, []byte("k"), 0o600); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	p := &Profile{
+		Name: "test",
+		Host: "10.0.0.1",
+		Port: 22,
+		User: "u",
+		JumpHosts: []JumpHost{{
+			Name:         "bastion",
+			Host:         "b1",
+			Port:         22,
+			User:         "u",
+			IdentityFile: key,
+		}},
+	}
+	if err := p.Validate(&Config{}); err != nil {
+		t.Errorf("expected no error, got: %v", err)
+	}
+}
